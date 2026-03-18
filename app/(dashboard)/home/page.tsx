@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
+import AttendanceWidget from "@/components/AttendanceWidget";
 
 /**
  * HomePage (Dashboard)
@@ -26,21 +27,8 @@ export default async function HomePage() {
           </p>
         </div>
 
-        {/* Attendance KPI */}
-        <div className="bg-surface border border-muted/10 rounded-2xl px-6 py-4 flex flex-col gap-1 min-w-[190px]">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted">
-            Today's Attendance
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-black text-foreground">95%</span>
-            <span className="text-xs text-cyan font-bold">+2.4%</span>
-          </div>
-          <p className="text-[10px] text-muted">checked in</p>
-          {/* Progress bar */}
-          <div className="mt-2 h-1 bg-muted/20 rounded-full overflow-hidden">
-            <div className="h-full w-[95%] bg-gradient-to-r from-cyan to-violet rounded-full" />
-          </div>
-        </div>
+        {/* Live Attendance Widget */}
+        <AttendanceWidget />
       </div>
 
       {/* ── Cards Grid ── */}

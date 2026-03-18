@@ -1,0 +1,151 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Clock, LogIn, LogOut, CheckCircle2, Loader2 } from "lucide-react";
+import ErrorModal from "@/components/ErrorModal";
+
+export default function AttendanceWidget() {
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [record, setRecord] = useState<any>(null);
+  const [liveDuration, setLiveDuration] = useState<number>(0);
+  const [errorInfo, setErrorInfo] = useState<{title: string; message: string} | null>(null);
+
+  useEffect(() => {
+    fetch("/api/attendance/today")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setRecord(json.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (record?.check_in && !record?.check_out) {
+      const checkInTime = new Date(record.check_in).getTime();
+      
+      const updateClock = () => {
+        const now = Date.now();
+        setLiveDuration(Math.floor((now - checkInTime) / 1000));
+      };
+      
+      updateClock(); // Initial update
+      interval = setInterval(updateClock, 1000);
+    } else if (record?.check_in && record?.check_out) {
+      const checkInTime = new Date(record.check_in).getTime();
+      const checkOutTime = new Date(record.check_out).getTime();
+      setLiveDuration(Math.floor((checkOutTime - checkInTime) / 1000));
+    }
+    
+    return () => clearInterval(interval);
+  }, [record]);
+
+  const formatTime = (totalSeconds: number) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const handleAction = async (action: "CHECK_IN" | "CHECK_OUT") => {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/attendance/today", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setErrorInfo({ title: "Action Failed", message: json.message });
+        return;
+      }
+      setRecord(json.data);
+    } catch (e: any) {
+      setErrorInfo({ title: "Network Error", message: "Failed to communicate with server." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-surface border border-muted/10 rounded-2xl px-6 py-6 flex items-center justify-center min-w-[240px] min-h-[140px] shadow-lg">
+        <Loader2 className="animate-spin text-cyan" />
+      </div>
+    );
+  }
+
+  const isCheckedIn = record?.check_in && !record?.check_out;
+  const isCheckedOut = record?.check_in && record?.check_out;
+
+  return (
+    <>
+      <ErrorModal
+        open={!!errorInfo}
+        title={errorInfo?.title || ""}
+        message={errorInfo?.message || ""}
+        onClose={() => setErrorInfo(null)}
+      />
+      <div className="bg-surface border border-muted/10 rounded-2xl p-5 flex flex-col justify-between min-w-[280px] shadow-lg relative overflow-hidden">
+        {/* Glow effect when active */}
+        {isCheckedIn && (
+          <div className="absolute inset-0 bg-cyan/5 pointer-events-none animate-pulse duration-1000" />
+        )}
+        
+        <div className="flex justify-between items-start mb-6 relative z-10">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted mb-1.5 flex items-center gap-2">
+              Today's Session
+              {isCheckedIn && <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-pulse" />}
+            </p>
+            <div className="flex items-baseline gap-2 font-mono">
+              <span className={`text-[40px] leading-none font-black tracking-tight ${isCheckedIn ? "text-cyan drop-shadow-[0_0_10px_rgba(45,212,191,0.3)]" : "text-foreground"}`}>
+                {formatTime(liveDuration)}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted uppercase tracking-widest mt-1">
+              {isCheckedIn ? "recording live..." : (isCheckedOut ? "shift finalized" : "ready to start")}
+            </p>
+          </div>
+          <div className={`p-2.5 rounded-xl ${isCheckedIn ? "bg-cyan/10 text-cyan border border-cyan/20" : "bg-muted/5 text-muted border border-muted/10"}`}>
+            <Clock size={20} strokeWidth={2} />
+          </div>
+        </div>
+
+        <div className="relative z-10 w-full space-y-2">
+          {!record?.check_in && (
+            <button
+              onClick={() => handleAction("CHECK_IN")}
+              disabled={actionLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-background bg-foreground hover:bg-muted-foreground disabled:opacity-50 transition-all shadow-md"
+            >
+              {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <><LogIn size={16} /> Punch In</>}
+            </button>
+          )}
+
+          {isCheckedIn && (
+            <button
+              onClick={() => handleAction("CHECK_OUT")}
+              disabled={actionLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-rose-500 hover:bg-rose-600 disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(244,63,94,0.2)] hover:shadow-[0_0_25px_rgba(244,63,94,0.35)]"
+            >
+              {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <><LogOut size={16} /> Punch Out</>}
+            </button>
+          )}
+
+          {isCheckedOut && (
+            <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 shadow-inner">
+              <CheckCircle2 size={16} /> Verified Shift
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

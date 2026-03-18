@@ -30,7 +30,8 @@ const AttendanceSchema = new Schema<IAttendance>(
 // Prevent a user from having two attendance records on the same day
 AttendanceSchema.index({ user_id: 1, date: 1 }, { unique: true });
 
-export const Attendance: Model<IAttendance> =
-  mongoose.models.Attendance ||
-  mongoose.model<IAttendance>("Attendance", AttendanceSchema);
+if (mongoose.models.Attendance) {
+  delete mongoose.models.Attendance;
+}
+export const Attendance: Model<IAttendance> = mongoose.model<IAttendance>("Attendance", AttendanceSchema);
 
