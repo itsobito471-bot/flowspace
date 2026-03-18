@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import dbConnect from "./mongodb";
 import { User } from "./models/User";
+import "./models/Role"; // required so Mongoose registers the Role schema for .populate()
 
 export const authOptions: NextAuthOptions = {
   providers: [
