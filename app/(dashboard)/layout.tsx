@@ -40,8 +40,8 @@ export default async function DashboardLayout({
         {/* Scrollable page content */}
         <main className="flex-1 overflow-y-auto relative">
           {/* Subtle ambient glow overlay */}
-          <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan/3 via-transparent to-violet/5 pointer-events-none" />
-          <div className="relative z-10 pb-24 md:pb-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan/3 via-transparent to-violet/5 pointer-events-none" />
+          <div className="relative pb-24 md:pb-0">
             {children}
           </div>
         </main>

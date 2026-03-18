@@ -18,12 +18,15 @@ import {
   Briefcase,
   Plus,
   Building2,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import { EditEmployeeModal, EditRoleModal, DeleteModal } from "./EditModals";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
 // ─────────────────────────────────────────────────────────────────────────────
-interface Role {
+export interface Role {
   _id: string;
   title: string;
   department: string;
@@ -31,7 +34,7 @@ interface Role {
   createdAt?: string;
 }
 
-interface TeamMember {
+export interface TeamMember {
   _id: string;
   name: string;
   email: string;
@@ -344,14 +347,14 @@ function CreateRoleModal({ open, onClose, onCreated }: {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Role Card
 // ─────────────────────────────────────────────────────────────────────────────
-function RoleCard({ role, index }: { role: Role; index: number }) {
+function RoleCard({ role, index, onEdit, onDelete }: { role: Role; index: number; onEdit: () => void; onDelete: () => void }) {
   const isAdmin = role.level === "ADMIN";
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.35, ease: "easeOut" }}
-      className="bg-surface border border-muted/10 rounded-2xl p-5 flex flex-col gap-4 hover:border-muted/30 transition-colors"
+      className="bg-surface border border-muted/10 rounded-2xl p-5 flex flex-col gap-4 hover:border-muted/30 transition-colors relative group"
     >
       {/* Icon + badge */}
       <div className="flex items-start justify-between">
@@ -359,10 +362,16 @@ function RoleCard({ role, index }: { role: Role; index: number }) {
           ${isAdmin ? "bg-violet/10 border-violet/20" : "bg-cyan/10 border-cyan/20"}`}>
           {isAdmin ? <ShieldCheck size={18} className="text-violet" /> : <Briefcase size={18} className="text-cyan" />}
         </div>
-        <span className={`text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full border
-          ${isAdmin ? LEVEL_STYLES.ADMIN : LEVEL_STYLES.EMPLOYEE}`}>
-          {role.level}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full border
+            ${isAdmin ? LEVEL_STYLES.ADMIN : LEVEL_STYLES.EMPLOYEE}`}>
+            {role.level}
+          </span>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={onEdit} className="text-muted hover:text-cyan p-1 transition-colors"><Pencil size={14} /></button>
+            <button onClick={onDelete} className="text-muted hover:text-red-500 p-1 transition-colors"><Trash2 size={14} /></button>
+          </div>
+        </div>
       </div>
 
       {/* Info */}
@@ -380,7 +389,7 @@ function RoleCard({ role, index }: { role: Role; index: number }) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Team Member Row
 // ─────────────────────────────────────────────────────────────────────────────
-function MemberRow({ member, index }: { member: TeamMember; index: number }) {
+function MemberRow({ member, index, onEdit, onDelete }: { member: TeamMember; index: number; onEdit: () => void; onDelete: () => void }) {
   const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
   const role = member.role_id;
   return (
@@ -414,6 +423,12 @@ function MemberRow({ member, index }: { member: TeamMember; index: number }) {
       <td className="px-6 py-4 text-[12px] text-muted hidden xl:table-cell">
         {new Date(member.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
       </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={onEdit} className="text-muted hover:text-cyan p-1.5 transition-colors"><Pencil size={15} /></button>
+          <button onClick={onDelete} className="text-muted hover:text-red-500 p-1.5 transition-colors"><Trash2 size={15} /></button>
+        </div>
+      </td>
     </motion.tr>
   );
 }
@@ -426,6 +441,47 @@ type Tab = "members" | "roles";
 export default function TeamPage() {
   const { data: session, status } = useSession();
   const [tab, setTab] = useState<Tab>("members");
+
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+
+  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+  const [isDeletingMember, setIsDeletingMember] = useState(false);
+
+  const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
+  const [isDeletingRole, setIsDeletingRole] = useState(false);
+
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return;
+    setIsDeletingMember(true);
+    try {
+      const res = await fetch(`/api/team/${memberToDelete}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!json.success) { alert(json.message); return; }
+      setMembers(p => p.filter(m => m._id !== memberToDelete));
+      setMemberToDelete(null);
+    } catch (e) { 
+      alert("Failed to delete member."); 
+    } finally {
+      setIsDeletingMember(false);
+    }
+  };
+
+  const handleDeleteRole = async () => {
+    if (!roleToDelete) return;
+    setIsDeletingRole(true);
+    try {
+      const res = await fetch(`/api/roles/${roleToDelete}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!json.success) { alert(json.message); return; }
+      setRoles(p => p.filter(r => r._id !== roleToDelete));
+      setRoleToDelete(null);
+    } catch (e) { 
+      alert("Failed to delete role."); 
+    } finally {
+      setIsDeletingRole(false);
+    }
+  };
 
   // Members state
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -487,6 +543,38 @@ export default function TeamPage() {
     <>
       <AddEmployeeModal open={empModalOpen} onClose={() => setEmpModalOpen(false)} onCreated={m => setMembers(p => [m, ...p])} />
       <CreateRoleModal  open={roleModalOpen} onClose={() => setRoleModalOpen(false)} onCreated={r => setRoles(p => [r, ...p])} />
+      
+      {/* Edit Modals */}
+      <EditEmployeeModal 
+        open={!!editingMember} 
+        member={editingMember} 
+        onClose={() => setEditingMember(null)} 
+        onUpdated={m => setMembers(p => p.map(x => x._id === m._id ? m : x))} 
+      />
+      <EditRoleModal 
+        open={!!editingRole} 
+        role={editingRole} 
+        onClose={() => setEditingRole(null)} 
+        onUpdated={r => setRoles(p => p.map(x => x._id === r._id ? r : x))} 
+      />
+
+      {/* Delete Modals */}
+      <DeleteModal
+        open={!!memberToDelete}
+        title="Remove Team Member?"
+        description="Are you sure you want to remove this employee? This action cannot be undone."
+        onClose={() => setMemberToDelete(null)}
+        onConfirm={handleDeleteMember}
+        isDeleting={isDeletingMember}
+      />
+      <DeleteModal
+        open={!!roleToDelete}
+        title="Delete Role?"
+        description="Are you sure you want to delete this role? Any users assigned to it will retain their access until updated."
+        onClose={() => setRoleToDelete(null)}
+        onConfirm={handleDeleteRole}
+        isDeleting={isDeletingRole}
+      />
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="p-6 md:p-8 space-y-6">
 
@@ -571,12 +659,12 @@ export default function TeamPage() {
                     <table className="w-full text-left">
                       <thead>
                         <tr className="border-b border-muted/10">
-                          {["Member", "Role & Department", "Status", "Joined"].map((col, i) => (
-                            <th key={col} className={`px-6 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70 ${i === 3 ? "hidden xl:table-cell" : ""}`}>{col}</th>
+                          {["Member", "Role & Department", "Status", "Joined", "Actions"].map((col, i) => (
+                            <th key={col} className={`px-6 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70 ${i === 3 ? "hidden xl:table-cell" : ""} ${i === 4 ? "text-right" : ""}`}>{col}</th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody>{members.map((m, i) => <MemberRow key={m._id} member={m} index={i} />)}</tbody>
+                      <tbody>{members.map((m, i) => <MemberRow key={m._id} member={m} index={i} onEdit={() => setEditingMember(m)} onDelete={() => setMemberToDelete(m._id)} />)}</tbody>
                     </table>
                   </div>
                 )}
@@ -598,7 +686,7 @@ export default function TeamPage() {
               )}
               {!rolesLoading && !rolesError && roles.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {roles.map((r, i) => <RoleCard key={r._id} role={r} index={i} />)}
+                  {roles.map((r, i) => <RoleCard key={r._id} role={r} index={i} onEdit={() => setEditingRole(r)} onDelete={() => setRoleToDelete(r._id)} />)}
                   {/* Ghost "add" card */}
                   <motion.button
                     initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
