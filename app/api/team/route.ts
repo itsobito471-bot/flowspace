@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     await dbConnect();
 
     const body = await request.json();
-    const { name, email, password, role_id, leave_quota } = body;
+    const { name, email, password, role_id } = body;
 
     // Basic validation
     if (!name || !email || !password) {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       email: email.trim().toLowerCase(),
       passwordHash,
       role_id: role_id || undefined,
-      leave_quota: Number(leave_quota) || 20,
+      earned_flex_leaves: 0,
       is_active: true,
     });
 

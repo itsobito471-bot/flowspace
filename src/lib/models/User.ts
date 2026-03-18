@@ -5,7 +5,7 @@ export interface IUser extends Document {
   email: string;
   passwordHash: string;
   role_id: mongoose.Types.ObjectId;
-  leave_quota: number;
+  earned_flex_leaves: number;
   is_active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -17,7 +17,7 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     role_id: { type: Schema.Types.ObjectId, ref: "Role", required: false },
-    leave_quota: { type: Number, default: 20 },
+    earned_flex_leaves: { type: Number, default: 0 },
     is_active: { type: Boolean, default: true },
   },
   { timestamps: true }

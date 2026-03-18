@@ -173,18 +173,20 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
         )}
 
         {/* Settings */}
-        <Link href="/settings">
-          <div
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-foreground hover:bg-muted/10 ${
-              collapsed ? "justify-center" : ""
-            }`}
-          >
-            <Settings size={18} strokeWidth={1.8} />
-            {!collapsed && (
-              <span className="text-sm font-semibold">Settings</span>
-            )}
-          </div>
-        </Link>
+        {userRole === "ADMIN" && (
+          <Link href="/settings">
+            <div
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-foreground hover:bg-muted/10 ${
+                collapsed ? "justify-center" : ""
+              }`}
+            >
+              <Settings size={18} strokeWidth={1.8} />
+              {!collapsed && (
+                <span className="text-sm font-semibold">Settings</span>
+              )}
+            </div>
+          </Link>
+        )}
 
         {/* Logout */}
         <button

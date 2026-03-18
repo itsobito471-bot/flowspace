@@ -3,6 +3,7 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export interface IHoliday extends Document {
   title: string;
   date: Date;
+  type: "PUBLIC" | "PROVISIONAL" | "OPTIONAL";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +16,11 @@ const HolidaySchema = new Schema<IHoliday>(
      * date-equality comparisons rather than range queries.
      */
     date: { type: Date, required: true, unique: true },
+    type: { 
+      type: String, 
+      enum: ["PUBLIC", "PROVISIONAL", "OPTIONAL"], 
+      default: "PUBLIC" 
+    },
   },
   { timestamps: true }
 );

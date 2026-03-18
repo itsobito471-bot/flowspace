@@ -92,7 +92,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role_id: "", leave_quota: "20" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role_id: "" });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,7 +100,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
     if (!open) return;
     setRolesLoading(true);
     fetch("/api/roles").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
-    setForm({ name: "", email: "", password: "", role_id: "", leave_quota: "20" });
+    setForm({ name: "", email: "", password: "", role_id: "" });
     setErrors({}); setApiError(null); setSuccess(false);
     setTimeout(() => firstInputRef.current?.focus(), 100);
   }, [open]);
@@ -119,7 +119,6 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
     else if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Enter a valid email.";
     if (!form.password) e.password = "Password is required.";
     else if (form.password.length < 6) e.password = "At least 6 characters.";
-    if (isNaN(Number(form.leave_quota)) || Number(form.leave_quota) < 0) e.leave_quota = "Must be 0 or more.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -132,7 +131,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
       const res = await fetch("/api/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password, role_id: form.role_id || null, leave_quota: Number(form.leave_quota) }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password, role_id: form.role_id || null }),
       });
       const json = await res.json();
       if (!json.success) { setApiError(json.message ?? "Something went wrong."); return; }
@@ -195,7 +194,6 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
                       </select>
                     )}
                   </Field>
-                  <Field label="Leave Quota (days)" error={errors.leave_quota}><input type="number" min={0} placeholder="20" value={form.leave_quota} onChange={set("leave_quota")} className={inputCls} /></Field>
                 </div>
                 <div className="flex gap-3 px-6 py-4 border-t border-muted/10">
                   <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 hover:text-foreground transition-all">Cancel</button>
