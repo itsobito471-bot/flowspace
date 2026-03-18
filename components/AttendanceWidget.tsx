@@ -112,6 +112,27 @@ export default function AttendanceWidget() {
             <p className="text-[10px] text-muted uppercase tracking-widest mt-1">
               {isCheckedIn ? "recording live..." : (isCheckedOut ? "shift finalized" : "ready to start")}
             </p>
+            {record?.check_in && (
+              <div className="flex items-center gap-3 mt-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-bold tracking-widest uppercase text-muted/60">In</span>
+                  <span className="text-[12px] font-bold text-cyan/80 font-mono">
+                    {new Date(record.check_in).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                  </span>
+                </div>
+                {record?.check_out && (
+                  <>
+                    <span className="text-muted/30 text-xs">·</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-bold tracking-widest uppercase text-muted/60">Out</span>
+                      <span className="text-[12px] font-bold text-rose-400/80 font-mono">
+                        {new Date(record.check_out).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <div className={`p-2.5 rounded-xl ${isCheckedIn ? "bg-cyan/10 text-cyan border border-cyan/20" : "bg-muted/5 text-muted border border-muted/10"}`}>
             <Clock size={20} strokeWidth={2} />

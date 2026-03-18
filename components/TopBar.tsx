@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell, Search, Sun, Moon } from "lucide-react";
+import { Search, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import NotificationBell from "@/components/NotificationBell";
 
 interface TopBarProps {
   userName: string;
@@ -61,10 +62,7 @@ export default function TopBar({ userName, userRole, userImage }: TopBarProps) {
         )}
 
         {/* Notification bell */}
-        <button className="relative text-muted hover:text-foreground transition-colors p-1">
-          <Bell size={18} strokeWidth={1.8} />
-          <span className="absolute top-0 right-0 w-2 h-2 bg-cyan rounded-full" />
-        </button>
+        <NotificationBell />
 
         {/* User pill */}
         <Link href="/profile">
