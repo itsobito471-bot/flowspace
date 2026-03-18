@@ -17,7 +17,7 @@ export default async function HomePage() {
       {/* ── Welcome Banner ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
         <div>
-          <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tighter leading-none">
+          <h1 className="text-4xl lg:text-5xl font-black text-foreground tracking-tighter leading-none">
             Welcome back, {firstName}.
           </h1>
           <p className="mt-2 text-muted text-sm flex items-center gap-2">
@@ -27,17 +27,17 @@ export default async function HomePage() {
         </div>
 
         {/* Attendance KPI */}
-        <div className="bg-[#161618] border border-white/5 rounded-2xl px-6 py-4 flex flex-col gap-1 min-w-[190px]">
+        <div className="bg-surface border border-muted/10 rounded-2xl px-6 py-4 flex flex-col gap-1 min-w-[190px]">
           <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted">
             Today's Attendance
           </p>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-black text-white">95%</span>
+            <span className="text-4xl font-black text-foreground">95%</span>
             <span className="text-xs text-cyan font-bold">+2.4%</span>
           </div>
           <p className="text-[10px] text-muted">checked in</p>
           {/* Progress bar */}
-          <div className="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="mt-2 h-1 bg-muted/20 rounded-full overflow-hidden">
             <div className="h-full w-[95%] bg-gradient-to-r from-cyan to-violet rounded-full" />
           </div>
         </div>
@@ -46,15 +46,15 @@ export default async function HomePage() {
       {/* ── Cards Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Task Overview */}
-        <div className="bg-[#161618] border border-white/5 rounded-3xl p-6">
+        <div className="bg-surface border border-muted/10 rounded-3xl p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="font-bold text-white text-base">Task Overview</h2>
+            <h2 className="font-bold text-foreground text-base">Task Overview</h2>
           </div>
           <div className="flex items-center justify-center">
             {/* Circular progress placeholder */}
             <div className="relative w-40 h-40 flex items-center justify-center">
               <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90 w-full h-full">
-                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted/10" strokeWidth="10" />
                 <circle
                   cx="50" cy="50" r="40"
                   fill="none"
@@ -72,7 +72,7 @@ export default async function HomePage() {
                 </defs>
               </svg>
               <div className="text-center">
-                <span className="block text-3xl font-black text-white">124</span>
+                <span className="block text-3xl font-black text-foreground">124</span>
                 <span className="text-[10px] text-muted uppercase tracking-widest">Active Tasks</span>
               </div>
             </div>
@@ -93,9 +93,9 @@ export default async function HomePage() {
         </div>
 
         {/* Recent Activity Feed */}
-        <div className="bg-[#161618] border border-white/5 rounded-3xl p-6">
+        <div className="bg-surface border border-muted/10 rounded-3xl p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="font-bold text-white text-base">Recent Activity Feed</h2>
+            <h2 className="font-bold text-foreground text-base">Recent Activity Feed</h2>
             <button className="text-[10px] font-bold tracking-widest uppercase text-cyan hover:underline">
               View History
             </button>
@@ -107,12 +107,12 @@ export default async function HomePage() {
               { text: "Sprint 24 successfully deployed to production", time: "2 hours ago • CI/CD Pipeline" },
               { text: "New feedback received for UI Redesign", time: "5 hours ago • Internal Forum" },
             ].map((item, i) => (
-              <div key={i} className="flex items-start gap-3 pb-4 border-b border-white/5 last:border-0 last:pb-0">
-                <div className="w-8 h-8 rounded-xl bg-white/10 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <div key={i} className="flex items-start gap-3 pb-4 border-b border-muted/10 last:border-0 last:pb-0">
+                <div className="w-8 h-8 rounded-xl bg-muted/10 flex-shrink-0 flex items-center justify-center mt-0.5">
                   <span className="text-xs text-cyan font-bold">{i + 1}</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-off-white leading-snug">{item.text}</p>
+                  <p className="text-sm text-foreground leading-snug">{item.text}</p>
                   <p className="text-[10px] text-muted mt-0.5">{item.time}</p>
                 </div>
               </div>

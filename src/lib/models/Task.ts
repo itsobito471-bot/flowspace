@@ -12,18 +12,25 @@ export interface ITask extends Document {
 
 const TaskSchema = new Schema<ITask>(
   {
-    space_id: { type: Schema.Types.ObjectId, required: true },
+    space_id: { type: Schema.Types.ObjectId, ref: "Space", required: true },
     title: { type: String, required: true },
-    assigned_to: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    status: { 
-      type: String, 
-      enum: ["TODO", "IN_PROGRESS", "DONE"], 
+    assigned_to: { type: Schema.Types.ObjectId, ref: "User", required: false },
+    status: {
+      type: String,
+      enum: ["TODO", "IN_PROGRESS", "DONE"],
       required: true,
-      default: "TODO"
+      default: "TODO",
     },
+    /** tracked_time stored in seconds for precision */
     tracked_time: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-export const Task: Model<ITask> = mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema);
+TaskSchema.index({ space_id: 1, status: 1 });
+TaskSchema.index({ assigned_to: 1 });
+
+export const Task: Model<ITask> =
+  mongoose.models.Task ||
+  mongoose.model<ITask>("Task", TaskSchema);
+

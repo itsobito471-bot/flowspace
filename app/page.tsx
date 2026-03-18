@@ -31,7 +31,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-obsidian text-off-white font-sans overflow-hidden">
+    <div className="min-h-screen w-full flex bg-background text-foreground font-sans overflow-hidden">
       {/* Left Column: Branding / Marketing Images */}
       <div className="hidden lg:flex w-[55%] flex-col justify-between p-12 relative overflow-hidden bg-black">
         {/* Abstract wavy background image placeholder */}
@@ -45,7 +45,7 @@ export default function LoginPage() {
           }}
         />
         {/* Gradient overlay to smoothly blend edges if needed */}
-        <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/80 via-transparent to-obsidian" />
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/80 via-transparent to-background" />
 
         <div className="relative z-10">
           <motion.div
@@ -56,7 +56,7 @@ export default function LoginPage() {
           >
             {/* Logo Icon */}
             <div className="w-8 h-8 bg-cyan relative rotate-45 flex flex-shrink-0 items-center justify-center">
-              <div className="w-3 h-3 bg-obsidian absolute -left-1 -bottom-1 rotate-45" />
+              <div className="w-3 h-3 bg-background absolute -left-1 -bottom-1 rotate-45" />
             </div>
             <span className="text-xl font-bold tracking-wide">FlowSpace</span>
           </motion.div>
@@ -68,7 +68,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
           >
-            <h1 className="text-8xl font-black tracking-tighter leading-[0.85] text-white">
+            <h1 className="text-8xl font-black tracking-tighter leading-[0.85] text-foreground">
               FLOW<br />
               SPACE.
             </h1>
@@ -99,15 +99,15 @@ export default function LoginPage() {
       </div>
 
       {/* Right Column: Login Form */}
-      <div className="w-full lg:w-[45%] flex items-center justify-center p-8 bg-obsidian">
+      <div className="w-full lg:w-[45%] flex items-center justify-center p-8 bg-background">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="w-full max-w-[420px]"
         >
-          <div className="bg-[#111113] border border-white/10 px-10 py-12 rounded-[40px] shadow-2xl relative">
-            <h2 className="text-3xl font-bold mb-2 tracking-tight text-white">The Gateway</h2>
+          <div className="bg-surface border border-muted/10 px-10 py-12 rounded-[40px] shadow-2xl relative">
+            <h2 className="text-3xl font-bold mb-2 tracking-tight text-foreground">The Gateway</h2>
             <p className="text-muted mb-10 text-sm font-light">Enter your credentials to access your workspace</p>
 
             <form onSubmit={handleSubmit} className="space-y-8">
@@ -123,7 +123,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-transparent border-b border-[#333] px-0 py-2 text-off-white placeholder:text-[#555] focus:outline-none focus:border-cyan transition-colors"
+                  className="w-full bg-transparent border-b border-muted/20 px-0 py-2 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-cyan transition-colors"
                   placeholder="name@company.com"
                   required
                 />
@@ -139,14 +139,14 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-transparent border-b border-[#333] px-0 py-2 text-off-white placeholder:text-[#555] focus:outline-none focus:border-cyan transition-colors"
+                    className="w-full bg-transparent border-b border-muted/20 px-0 py-2 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-cyan transition-colors"
                     placeholder="••••••••"
                     required
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 text-[#777] hover:text-white transition-colors"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-muted hover:text-foreground transition-colors"
                   >
                     {showPassword ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
                   </button>

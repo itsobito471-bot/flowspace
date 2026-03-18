@@ -69,7 +69,7 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
       animate={{ width: collapsed ? 80 : 260 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="hidden md:flex h-screen flex-col justify-between relative
-                 bg-[#111113]/80 backdrop-blur-2xl border-r border-white/5
+                 bg-background/80 backdrop-blur-2xl border-r border-muted/10
                  overflow-hidden shrink-0"
     >
       {/* ── Header ── */}
@@ -86,9 +86,9 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
               <div className="flex items-center gap-2">
                 {/* Diamond logo mark */}
                 <div className="w-6 h-6 bg-cyan rotate-45 relative flex-shrink-0">
-                  <div className="w-2 h-2 bg-obsidian absolute -left-0.5 -bottom-0.5 rotate-45" />
+                  <div className="w-2 h-2 bg-background absolute -left-0.5 -bottom-0.5 rotate-45" />
                 </div>
-                <span className="text-white font-bold text-base tracking-tight">FlowSpace</span>
+                <span className="text-foreground font-bold text-base tracking-tight">FlowSpace</span>
               </div>
               <p className="text-[10px] text-muted tracking-[0.18em] uppercase pl-8 font-semibold">
                 {userRole === "ADMIN" ? "Admin Console" : "Workspace"}
@@ -99,7 +99,7 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
           {/* Collapse toggle */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="text-muted hover:text-white transition-colors ml-auto"
+            className="text-muted hover:text-foreground transition-colors ml-auto"
             aria-label="Toggle sidebar"
           >
             {collapsed ? <Menu size={20} /> : <X size={18} />}
@@ -120,7 +120,7 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
                     ${
                       isActive
                         ? "bg-cyan/10 text-cyan border border-cyan/20"
-                        : "text-muted hover:text-white hover:bg-white/5 border border-transparent"
+                        : "text-muted hover:text-foreground hover:bg-muted/10 border border-transparent"
                     }`}
                 >
                   <item.icon
@@ -151,17 +151,17 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mx-0 p-3 rounded-xl bg-white/5 border border-white/5"
+            className="mx-0 p-3 rounded-xl bg-surface/50 border border-muted/10"
           >
             <div className="flex items-center gap-2.5 mb-2">
               <Zap size={14} className="text-cyan" />
-              <span className="text-[11px] font-bold tracking-widest uppercase text-off-white">
+              <span className="text-[11px] font-bold tracking-widest uppercase text-foreground">
                 Pro Plan
               </span>
             </div>
             <p className="text-[10px] text-muted mb-2">Syncing across 12 nodes</p>
             {/* Progress bar */}
-            <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-0.5 bg-muted/20 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-cyan to-violet rounded-full"
                 initial={{ width: "0%" }}
@@ -175,7 +175,7 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
         {/* Settings */}
         <Link href="/settings">
           <div
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-white hover:bg-white/5 ${
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-foreground hover:bg-muted/10 ${
               collapsed ? "justify-center" : ""
             }`}
           >
@@ -218,7 +218,7 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
   return (
     <>
       {/* ── Bottom Nav (always visible on mobile) ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111113]/90 backdrop-blur-xl border-t border-white/5 px-2 py-2 flex items-center justify-around">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-muted/10 px-2 py-2 flex items-center justify-around">
         {visibleItems.slice(0, 4).map((item) => {
           const isActive = pathname?.startsWith(item.href);
           return (
@@ -266,16 +266,16 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-72 bg-[#111113] border-r border-white/5 flex flex-col p-6"
+              className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-72 bg-background border-r border-muted/10 flex flex-col p-6"
             >
               <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 bg-cyan rotate-45 relative flex-shrink-0">
-                    <div className="w-2 h-2 bg-obsidian absolute -left-0.5 -bottom-0.5 rotate-45" />
+                    <div className="w-2 h-2 bg-background absolute -left-0.5 -bottom-0.5 rotate-45" />
                   </div>
-                  <span className="text-white font-bold text-base tracking-tight">FlowSpace</span>
+                  <span className="text-foreground font-bold text-base tracking-tight">FlowSpace</span>
                 </div>
-                <button onClick={() => setOpen(false)} className="text-muted hover:text-white transition-colors">
+                <button onClick={() => setOpen(false)} className="text-muted hover:text-foreground transition-colors">
                   <X size={20} />
                 </button>
               </div>
@@ -289,7 +289,7 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
                         className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${
                           isActive
                             ? "bg-cyan/10 text-cyan border-cyan/20"
-                            : "text-muted hover:text-white hover:bg-white/5 border-transparent"
+                            : "text-muted hover:text-foreground hover:bg-muted/10 border-transparent"
                         }`}
                       >
                         <item.icon size={18} strokeWidth={isActive ? 2.5 : 1.8} />
@@ -326,3 +326,4 @@ export default function Sidebar(props: SidebarProps) {
     </>
   );
 }
+

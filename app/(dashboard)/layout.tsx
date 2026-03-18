@@ -28,7 +28,7 @@ export default async function DashboardLayout({
   const userName = session.user?.name ?? "User";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-obsidian text-off-white font-sans">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans">
       {/* ── Desktop/Mobile Sidebar ── */}
       <Sidebar userRole={userRole} userName={userName} />
 

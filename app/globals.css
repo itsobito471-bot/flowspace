@@ -1,23 +1,56 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #0A0A0B;
-  --color-foreground: #E0E0E0;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
-  --color-obsidian: #0A0A0B;
-  --color-surface: #161618;
+  /* Mapping our custom semantic names to variables */
+  --color-obsidian: var(--obsidian);
+  --color-surface: var(--surface);
 
-  --color-cyan: #00F2FE;
-  --color-violet: #892CDC;
+  --color-cyan: var(--cyan);
+  --color-violet: var(--violet);
   
-  --color-off-white: #E0E0E0;
-  --color-muted: #A0A0A0;
+  --color-off-white: var(--off-white);
+  --color-muted: var(--muted);
 
   --radius-extreme: 32px;
 }
 
-body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Light Mode Defaults */
+:root {
+  --background: #F3F4F6;
+  --foreground: #111827;
+  
+  --obsidian: #F9FAFB;
+  --surface: #FFFFFF;
+  
+  --cyan: #07A5B0;
+  --violet: #6D28D9;
+  
+  --off-white: #1F2937;
+  --muted: #6B7280;
 }
+
+/* Dark Mode Overrides (softer than previous #0A0A0B) */
+.dark {
+  --background: #0E0E10;
+  --foreground: #E5E7EB;
+  
+  --obsidian: #0E0E10;
+  --surface: #18181A;
+  
+  --cyan: #00F2FE;
+  --violet: #892CDC;
+  
+  --off-white: #F3F4F6;
+  --muted: #A1A1AA;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
