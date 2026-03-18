@@ -29,14 +29,16 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   
-  const [form, setForm] = useState({ name: "", email: "", role_id: "", is_active: true });
+  const [form, setForm] = useState({ name: "", email: "", role_id: "", is_active: true, employee_id: "", date_of_joining: "" });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
 
   useEffect(() => {
     if (!open || !member) return;
     setRolesLoading(true);
     fetch("/api/roles").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
-    setForm({ name: member.name, email: member.email, role_id: member.role_id?._id || "", is_active: member.is_active });
+    
+    const formattedDate = member.date_of_joining ? new Date(member.date_of_joining).toISOString().split('T')[0] : "";
+    setForm({ name: member.name, email: member.email, role_id: member.role_id?._id || "", is_active: member.is_active, employee_id: member.employee_id || "", date_of_joining: formattedDate });
     setErrors({}); setApiError(null);
   }, [open, member]);
 
@@ -54,7 +56,7 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
       const res = await fetch(`/api/team/${member!._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), role_id: form.role_id || null, is_active: form.is_active }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), role_id: form.role_id || null, is_active: form.is_active, employee_id: form.employee_id.trim(), date_of_joining: form.date_of_joining }),
       });
       const json = await res.json();
       if (!json.success) { setApiError(json.message ?? "Failed to update."); return; }
@@ -83,8 +85,14 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
               {apiError && <div className="px-6 py-3.5 bg-red-500/10 border-b border-red-500/20 text-red-500 text-sm flex gap-2"><AlertCircle size={15}/>{apiError}</div>}
               <form onSubmit={handleSubmit}>
                 <div className="px-6 py-5 space-y-4">
-                  <Field label="Full Name" error={errors.name}><input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputCls} /></Field>
-                  <Field label="Email Address" error={errors.email}><input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={inputCls} /></Field>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Full Name" error={errors.name}><input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputCls} /></Field>
+                    <Field label="Email Address" error={errors.email}><input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={inputCls} /></Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Employee ID" error={errors.employee_id}><input type="text" value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} className={inputCls} /></Field>
+                    <Field label="Date of Joining" error={errors.date_of_joining}><input type="date" value={form.date_of_joining} onChange={e => setForm(p => ({ ...p, date_of_joining: e.target.value }))} className={inputCls} /></Field>
+                  </div>
                   <Field label="Role">
                     <select value={form.role_id} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))} className={inputCls + " appearance-none"}>
                       <option value="" className="bg-surface">— No role —</option>

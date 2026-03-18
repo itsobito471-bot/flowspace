@@ -10,7 +10,7 @@ export async function GET() {
 
     const users = await User.find({})
       .populate("role_id", "title department level") // only pull the fields we need
-      .select("name email is_active role_id createdAt")
+      .select("name email is_active role_id createdAt employee_id date_of_joining")
       .sort({ createdAt: -1 })
       .lean()
       .exec();
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     await dbConnect();
 
     const body = await request.json();
-    const { name, email, password, role_id } = body;
+    const { name, email, password, role_id, employee_id, date_of_joining } = body;
 
     // Basic validation
     if (!name || !email || !password) {
@@ -48,6 +48,8 @@ export async function POST(request: Request) {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       passwordHash,
+      employee_id: employee_id ? employee_id.trim() : undefined,
+      date_of_joining: date_of_joining ? new Date(date_of_joining) : undefined,
       role_id: role_id || undefined,
       earned_flex_leaves: 0,
       is_active: true,
@@ -56,7 +58,7 @@ export async function POST(request: Request) {
     // Re-fetch with populated role so the UI can add the row immediately
     const populated = await User.findById(newUser._id)
       .populate("role_id", "title department level")
-      .select("name email is_active role_id createdAt")
+      .select("name email is_active role_id createdAt employee_id date_of_joining")
       .lean()
       .exec();
 

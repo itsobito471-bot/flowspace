@@ -22,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { EditEmployeeModal, EditRoleModal, DeleteModal } from "./EditModals";
+import ErrorModal from "@/components/ErrorModal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -38,6 +39,8 @@ export interface TeamMember {
   _id: string;
   name: string;
   email: string;
+  employee_id?: string;
+  date_of_joining?: string;
   is_active: boolean;
   role_id: Role | null;
   createdAt: string;
@@ -51,8 +54,8 @@ function initials(name: string) {
 }
 
 const LEVEL_STYLES: Record<string, string> = {
-  ADMIN:   "bg-violet/20 text-violet border border-violet/30",
-  EMPLOYEE:"bg-cyan/10 text-cyan border border-cyan/20",
+  ADMIN: "bg-violet/20 text-violet border border-violet/30",
+  EMPLOYEE: "bg-cyan/10 text-cyan border border-cyan/20",
 };
 
 const AVATAR_COLORS = [
@@ -95,7 +98,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role_id: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role_id: "", employee_id: "", date_of_joining: "" });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,7 +106,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
     if (!open) return;
     setRolesLoading(true);
     fetch("/api/roles").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
-    setForm({ name: "", email: "", password: "", role_id: "" });
+    setForm({ name: "", email: "", password: "", role_id: "", employee_id: "", date_of_joining: "" });
     setErrors({}); setApiError(null); setSuccess(false);
     setTimeout(() => firstInputRef.current?.focus(), 100);
   }, [open]);
@@ -134,7 +137,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
       const res = await fetch("/api/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password, role_id: form.role_id || null }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password, role_id: form.role_id || null, employee_id: form.employee_id.trim(), date_of_joining: form.date_of_joining }),
       });
       const json = await res.json();
       if (!json.success) { setApiError(json.message ?? "Something went wrong."); return; }
@@ -179,8 +182,14 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
               </AnimatePresence>
               <form onSubmit={handleSubmit} noValidate>
                 <div className="px-6 py-5 space-y-4">
-                  <Field label="Full Name" error={errors.name}><input ref={firstInputRef} type="text" placeholder="e.g. Alex Johnson" value={form.name} onChange={set("name")} className={inputCls} /></Field>
-                  <Field label="Email Address" error={errors.email}><input type="email" placeholder="alex@company.io" value={form.email} onChange={set("email")} className={inputCls} /></Field>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Full Name" error={errors.name}><input ref={firstInputRef} type="text" placeholder="e.g. Alex Johnson" value={form.name} onChange={set("name")} className={inputCls} /></Field>
+                    <Field label="Email Address" error={errors.email}><input type="email" placeholder="alex@company.io" value={form.email} onChange={set("email")} className={inputCls} /></Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Employee ID" error={errors.employee_id}><input type="text" placeholder="e.g. EMP-001" value={form.employee_id} onChange={set("employee_id")} className={inputCls} /></Field>
+                    <Field label="Date of Joining" error={errors.date_of_joining}><input type="date" value={form.date_of_joining} onChange={set("date_of_joining")} className={inputCls} /></Field>
+                  </div>
                   <Field label="Temporary Password" error={errors.password}>
                     <div className="relative">
                       <input type={showPw ? "text" : "password"} placeholder="Min. 6 characters" value={form.password} onChange={set("password")} className={inputCls + " pr-10"} />
@@ -451,17 +460,19 @@ export default function TeamPage() {
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
   const [isDeletingRole, setIsDeletingRole] = useState(false);
 
+  const [errorInfo, setErrorInfo] = useState<{title: string; message: string} | null>(null);
+
   const handleDeleteMember = async () => {
     if (!memberToDelete) return;
     setIsDeletingMember(true);
     try {
       const res = await fetch(`/api/team/${memberToDelete}`, { method: "DELETE" });
       const json = await res.json();
-      if (!json.success) { alert(json.message); return; }
+      if (!json.success) { setErrorInfo({ title: "Cannot Delete Member", message: json.message }); return; }
       setMembers(p => p.filter(m => m._id !== memberToDelete));
       setMemberToDelete(null);
-    } catch (e) { 
-      alert("Failed to delete member."); 
+    } catch (e) {
+      setErrorInfo({ title: "Deletion Failed", message: "Network error. Failed to delete member." });
     } finally {
       setIsDeletingMember(false);
     }
@@ -473,11 +484,11 @@ export default function TeamPage() {
     try {
       const res = await fetch(`/api/roles/${roleToDelete}`, { method: "DELETE" });
       const json = await res.json();
-      if (!json.success) { alert(json.message); return; }
+      if (!json.success) { setErrorInfo({ title: "Action Blocked", message: json.message }); return; }
       setRoles(p => p.filter(r => r._id !== roleToDelete));
       setRoleToDelete(null);
-    } catch (e) { 
-      alert("Failed to delete role."); 
+    } catch (e) {
+      setErrorInfo({ title: "Deletion Failed", message: "Network error. Failed to delete role." });
     } finally {
       setIsDeletingRole(false);
     }
@@ -536,26 +547,26 @@ export default function TeamPage() {
 
   const TABS = [
     { id: "members" as Tab, label: "Team Members", icon: Users, count: members.length },
-    { id: "roles"   as Tab, label: "Roles",        icon: ShieldCheck, count: roles.length },
+    { id: "roles" as Tab, label: "Roles", icon: ShieldCheck, count: roles.length },
   ];
 
   return (
     <>
       <AddEmployeeModal open={empModalOpen} onClose={() => setEmpModalOpen(false)} onCreated={m => setMembers(p => [m, ...p])} />
-      <CreateRoleModal  open={roleModalOpen} onClose={() => setRoleModalOpen(false)} onCreated={r => setRoles(p => [r, ...p])} />
-      
+      <CreateRoleModal open={roleModalOpen} onClose={() => setRoleModalOpen(false)} onCreated={r => setRoles(p => [r, ...p])} />
+
       {/* Edit Modals */}
-      <EditEmployeeModal 
-        open={!!editingMember} 
-        member={editingMember} 
-        onClose={() => setEditingMember(null)} 
-        onUpdated={m => setMembers(p => p.map(x => x._id === m._id ? m : x))} 
+      <EditEmployeeModal
+        open={!!editingMember}
+        member={editingMember}
+        onClose={() => setEditingMember(null)}
+        onUpdated={m => setMembers(p => p.map(x => x._id === m._id ? m : x))}
       />
-      <EditRoleModal 
-        open={!!editingRole} 
-        role={editingRole} 
-        onClose={() => setEditingRole(null)} 
-        onUpdated={r => setRoles(p => p.map(x => x._id === r._id ? r : x))} 
+      <EditRoleModal
+        open={!!editingRole}
+        role={editingRole}
+        onClose={() => setEditingRole(null)}
+        onUpdated={r => setRoles(p => p.map(x => x._id === r._id ? r : x))}
       />
 
       {/* Delete Modals */}
@@ -574,6 +585,13 @@ export default function TeamPage() {
         onClose={() => setRoleToDelete(null)}
         onConfirm={handleDeleteRole}
         isDeleting={isDeletingRole}
+      />
+      
+      <ErrorModal
+        open={!!errorInfo}
+        title={errorInfo?.title || ""}
+        message={errorInfo?.message || ""}
+        onClose={() => setErrorInfo(null)}
       />
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="p-6 md:p-8 space-y-6">
@@ -606,10 +624,10 @@ export default function TeamPage() {
         {/* ── Stats Strip ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Total Members", value: members.length,                                      color: "text-foreground" },
-            { label: "Active",        value: members.filter(m => m.is_active).length,             color: "text-emerald-600 dark:text-emerald-400" },
-            { label: "Total Roles",   value: roles.length,                                        color: "text-violet" },
-            { label: "Departments",   value: new Set(roles.map(r => r.department)).size,           color: "text-cyan" },
+            { label: "Total Members", value: members.length, color: "text-foreground" },
+            { label: "Active", value: members.filter(m => m.is_active).length, color: "text-emerald-600 dark:text-emerald-400" },
+            { label: "Total Roles", value: roles.length, color: "text-violet" },
+            { label: "Departments", value: new Set(roles.map(r => r.department)).size, color: "text-cyan" },
           ].map(s => (
             <div key={s.label} className="bg-surface border border-muted/10 rounded-2xl px-5 py-4">
               <p className="text-[11px] text-muted tracking-widest uppercase font-semibold mb-1">{s.label}</p>
