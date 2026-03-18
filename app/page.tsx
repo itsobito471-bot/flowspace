@@ -56,9 +56,9 @@ export default function LoginPage() {
           >
             {/* Logo Icon */}
             <div className="w-8 h-8 bg-cyan relative rotate-45 flex flex-shrink-0 items-center justify-center">
-              <div className="w-3 h-3 bg-background absolute -left-1 -bottom-1 rotate-45" />
+              <div className="w-3 h-3 bg-black absolute -left-1 -bottom-1 rotate-45" />
             </div>
-            <span className="text-xl font-bold tracking-wide">FlowSpace</span>
+            <span className="text-xl font-bold tracking-wide text-white">FlowSpace</span>
           </motion.div>
         </div>
 
@@ -68,17 +68,17 @@ export default function LoginPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
           >
-            <h1 className="text-8xl font-black tracking-tighter leading-[0.85] text-foreground">
+            <h1 className="text-8xl font-black tracking-tighter leading-[0.85] text-white">
               FLOW<br />
               SPACE.
             </h1>
-            <p className="mt-8 text-2xl text-muted font-light tracking-wide">
+            <p className="mt-8 text-2xl text-white/70 font-light tracking-wide">
               Your work, <span className="text-cyan font-normal">synchronized</span>.
             </p>
           </motion.div>
         </div>
 
-        <div className="relative z-10 flex items-center gap-8 text-[10px] font-bold tracking-[0.2em] uppercase text-muted">
+        <div className="relative z-10 flex items-center gap-8 text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
