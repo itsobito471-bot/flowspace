@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { EditEmployeeModal, EditRoleModal, DeleteModal } from "./EditModals";
 import ErrorModal from "@/components/ErrorModal";
+import TeamStatusWidget from "@/components/TeamStatusWidget";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -533,15 +534,17 @@ export default function TeamPage() {
 
   if (!isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} className="w-20 h-20 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-          <ShieldOff size={36} className="text-red-400" />
-        </motion.div>
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Access Restricted</h2>
-          <p className="text-sm text-muted mt-1 max-w-xs">You need <span className="text-cyan font-semibold">ADMIN</span> privileges to view this page.</p>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 md:p-8 h-full">
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-1">
+            <Users size={18} className="text-cyan" />
+            <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-cyan/70">People & Org</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Team Directory</h1>
+          <p className="text-sm text-muted mt-1">View the live operational status of your colleagues.</p>
         </div>
-      </div>
+        <TeamStatusWidget />
+      </motion.div>
     );
   }
 
