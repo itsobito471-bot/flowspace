@@ -4,13 +4,15 @@ import { Bell, Search, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface TopBarProps {
   userName: string;
   userRole: string;
+  userImage?: string | null;
 }
 
-export default function TopBar({ userName, userRole }: TopBarProps) {
+export default function TopBar({ userName, userRole, userImage }: TopBarProps) {
   const { theme, setTheme } = useTheme();
   // Prevent hydration mismatch for theme toggle icon
   const [mounted, setMounted] = useState(false);
@@ -65,16 +67,22 @@ export default function TopBar({ userName, userRole }: TopBarProps) {
         </button>
 
         {/* User pill */}
-        <div className="flex items-center gap-3 pl-4 border-l border-muted/20">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-foreground leading-none">{userName}</p>
-            <p className="text-[10px] text-muted tracking-[0.12em] uppercase mt-0.5">{displayRole}</p>
-          </div>
+        <Link href="/profile">
+          <div className="flex items-center gap-3 pl-4 border-l border-muted/20 cursor-pointer group">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-semibold text-foreground leading-none group-hover:text-cyan transition-colors">{userName}</p>
+              <p className="text-[10px] text-muted tracking-[0.12em] uppercase mt-0.5">{displayRole}</p>
+            </div>
 
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan/40 to-violet/40 border border-cyan/20 flex items-center justify-center text-sm font-bold text-white">
-            {initials}
+            {userImage ? (
+              <img src={userImage} alt={userName} className="w-9 h-9 rounded-full object-cover border border-muted/20 group-hover:border-cyan/40 transition-colors" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan/40 to-violet/40 border border-cyan/20 flex items-center justify-center text-sm font-bold text-white group-hover:shadow-[0_0_15px_rgba(45,212,191,0.4)] transition-all">
+                {initials}
+              </div>
+            )}
           </div>
-        </div>
+        </Link>
       </div>
     </motion.header>
   );

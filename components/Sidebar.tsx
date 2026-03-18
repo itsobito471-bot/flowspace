@@ -10,6 +10,7 @@ import {
   BarChart2,
   Settings,
   LogOut,
+  User,
   Zap,
   ShieldAlert,
   Menu,
@@ -34,6 +35,7 @@ interface SidebarProps {
   userRole?: string;
   userName?: string;
   userDepartment?: string;
+  userImage?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +190,20 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
           </Link>
         )}
 
+        {/* Profile Settings */}
+        <Link href="/profile">
+          <div
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-cyan hover:bg-cyan/10 border border-transparent hover:border-cyan/20 ${
+              collapsed ? "justify-center" : ""
+            }`}
+          >
+            <User size={18} strokeWidth={1.8} />
+            {!collapsed && (
+              <span className="text-sm font-semibold">My Profile</span>
+            )}
+          </div>
+        </Link>
+
         {/* Logout */}
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
@@ -302,13 +318,31 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
                 })}
               </nav>
 
-              <button
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl text-red-500/70 hover:text-red-500 hover:bg-red-500/10 transition-all mt-4"
-              >
-                <LogOut size={18} />
-                <span className="text-sm font-semibold">Disconnect</span>
-              </button>
+              <div className="space-y-2 mt-4">
+                {userRole === "ADMIN" && (
+                  <Link href="/settings" onClick={() => setOpen(false)}>
+                    <div className="flex items-center gap-4 px-4 py-3 rounded-xl border border-transparent text-muted hover:text-foreground hover:bg-muted/10 transition-all">
+                      <Settings size={18} />
+                      <span className="text-sm font-semibold">Settings</span>
+                    </div>
+                  </Link>
+                )}
+
+                <Link href="/profile" onClick={() => setOpen(false)}>
+                  <div className="flex items-center gap-4 px-4 py-3 rounded-xl border border-transparent text-muted hover:text-cyan hover:bg-cyan/10 transition-all">
+                    <User size={18} />
+                    <span className="text-sm font-semibold">My Profile</span>
+                  </div>
+                </Link>
+                
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-500/70 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                >
+                  <LogOut size={18} />
+                  <span className="text-sm font-semibold">Disconnect</span>
+                </button>
+              </div>
             </motion.div>
           </>
         )}

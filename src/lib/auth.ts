@@ -36,6 +36,7 @@ export const authOptions: NextAuthOptions = {
           id: user._id.toString(),
           email: user.email,
           name: user.name,
+          image: user.avatar,
           role: user.role_id, // We'll pass the whole role or just ID depending on requirements
         };
       }
@@ -45,10 +46,19 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.picture = user.image; // Explicitly map image back to picture or image
+      }
+      
+      // Allow manual session update triggered from the client (e.g. after profile edit)
+      if (trigger === "update" && session?.image) {
+        token.picture = session.image;
+      }
+      if (trigger === "update" && session?.name) {
+        token.name = session.name;
       }
       return token;
     },
@@ -56,6 +66,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role;
+        session.user.image = token.picture as string || null;
       }
       return session;
     }

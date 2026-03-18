@@ -26,16 +26,17 @@ export default async function DashboardLayout({
 
   const userRole = (session.user as any)?.role?.level ?? "EMPLOYEE";
   const userName = session.user?.name ?? "User";
+  const userImage = session.user?.image ?? null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans">
       {/* ── Desktop/Mobile Sidebar ── */}
-      <Sidebar userRole={userRole} userName={userName} />
+      <Sidebar userRole={userRole} userName={userName} userImage={userImage} />
 
       {/* ── Main content column ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Fixed top header */}
-        <TopBar userName={userName} userRole={userRole} />
+        <TopBar userName={userName} userRole={userRole} userImage={userImage} />
 
         {/* Scrollable page content */}
         <main className="flex-1 overflow-y-auto relative">
