@@ -3,11 +3,30 @@ import dbConnect from "@/src/lib/mongodb";
 import { Role } from "@/src/lib/models/Role";
 
 // ── GET — list all roles ─────────────────────────────────────────────────────
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await dbConnect();
-    const roles = await Role.find({}).sort({ level: -1 }).lean().exec();
-    return NextResponse.json({ success: true, data: roles }, { status: 200 });
+
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
+    const skip = (page - 1) * limit;
+
+    const [roles, totalCount] = await Promise.all([
+      Role.find({}).sort({ level: -1 }).skip(skip).limit(limit).lean().exec(),
+      Role.countDocuments({}),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: roles,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    }, { status: 200 });
   } catch (error) {
     console.error("[GET /api/roles]", error);
     return NextResponse.json(

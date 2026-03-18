@@ -35,7 +35,7 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
   useEffect(() => {
     if (!open || !member) return;
     setRolesLoading(true);
-    fetch("/api/roles").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
+    fetch("/api/roles?limit=200").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
     
     const formattedDate = member.date_of_joining ? new Date(member.date_of_joining).toISOString().split('T')[0] : "";
     setForm({ name: member.name, email: member.email, role_id: member.role_id?._id || "", is_active: member.is_active, employee_id: member.employee_id || "", date_of_joining: formattedDate });

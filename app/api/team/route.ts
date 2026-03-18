@@ -4,18 +4,37 @@ import { User } from "@/src/lib/models/User";
 import "@/src/lib/models/Role"; // ensure Role schema is registered for .populate()
 import bcrypt from "bcryptjs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await dbConnect();
 
-    const users = await User.find({})
-      .populate("role_id", "title department level") // only pull the fields we need
-      .select("name email is_active role_id createdAt employee_id date_of_joining")
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json({ success: true, data: users }, { status: 200 });
+    const [users, totalCount] = await Promise.all([
+      User.find({})
+        .populate("role_id", "title department level")
+        .select("name email is_active role_id createdAt employee_id date_of_joining")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      User.countDocuments({}),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: users,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    }, { status: 200 });
   } catch (error) {
     console.error("[GET /api/team]", error);
     return NextResponse.json(

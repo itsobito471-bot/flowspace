@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +20,8 @@ import {
   Building2,
   Pencil,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { EditEmployeeModal, EditRoleModal, DeleteModal } from "./EditModals";
 import ErrorModal from "@/components/ErrorModal";
@@ -106,7 +108,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
   useEffect(() => {
     if (!open) return;
     setRolesLoading(true);
-    fetch("/api/roles").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
+    fetch("/api/roles?limit=200").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
     setForm({ name: "", email: "", password: "", role_id: "", employee_id: "", date_of_joining: "" });
     setErrors({}); setApiError(null); setSuccess(false);
     setTimeout(() => firstInputRef.current?.focus(), 100);
@@ -495,38 +497,62 @@ export default function TeamPage() {
     }
   };
 
+  const MEMBERS_LIMIT = 20;
+  const ROLES_LIMIT = 20;
+
   // Members state
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [empModalOpen, setEmpModalOpen] = useState(false);
+  const [membersPage, setMembersPage] = useState(1);
+  const [membersTotalPages, setMembersTotalPages] = useState(1);
+  const [membersTotalCount, setMembersTotalCount] = useState(0);
 
   // Roles state
   const [roles, setRoles] = useState<Role[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
   const [rolesError, setRolesError] = useState<string | null>(null);
   const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [rolesPage, setRolesPage] = useState(1);
+  const [rolesTotalPages, setRolesTotalPages] = useState(1);
+  const [rolesTotalCount, setRolesTotalCount] = useState(0);
 
   const userRole = (session?.user as any)?.role?.level ?? null;
   const isAdmin = userRole === "ADMIN";
 
   // Fetch members
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/team").then(r => r.json()).then(j => {
-      if (!j.success) throw new Error(j.message);
-      setMembers(j.data);
-    }).catch(e => setMembersError(e.message)).finally(() => setMembersLoading(false));
-  }, [status]);
+  const fetchMembers = useCallback((page: number) => {
+    setMembersLoading(true);
+    fetch(`/api/team?page=${page}&limit=${MEMBERS_LIMIT}`)
+      .then(r => r.json())
+      .then(j => {
+        if (!j.success) throw new Error(j.message);
+        setMembers(j.data);
+        setMembersTotalPages(j.pagination.totalPages);
+        setMembersTotalCount(j.pagination.totalCount);
+      })
+      .catch(e => setMembersError(e.message))
+      .finally(() => setMembersLoading(false));
+  }, []);
 
   // Fetch roles
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/roles").then(r => r.json()).then(j => {
-      if (!j.success) throw new Error(j.message);
-      setRoles(j.data);
-    }).catch(e => setRolesError(e.message)).finally(() => setRolesLoading(false));
-  }, [status]);
+  const fetchRoles = useCallback((page: number) => {
+    setRolesLoading(true);
+    fetch(`/api/roles?page=${page}&limit=${ROLES_LIMIT}`)
+      .then(r => r.json())
+      .then(j => {
+        if (!j.success) throw new Error(j.message);
+        setRoles(j.data);
+        setRolesTotalPages(j.pagination.totalPages);
+        setRolesTotalCount(j.pagination.totalCount);
+      })
+      .catch(e => setRolesError(e.message))
+      .finally(() => setRolesLoading(false));
+  }, []);
+
+  useEffect(() => { if (status === "authenticated") fetchMembers(membersPage); }, [status, membersPage, fetchMembers]);
+  useEffect(() => { if (status === "authenticated") fetchRoles(rolesPage); }, [status, rolesPage, fetchRoles]);
 
   if (status === "loading") {
     return <div className="flex h-full items-center justify-center"><Loader2 size={28} className="text-cyan animate-spin" /></div>;
@@ -549,9 +575,56 @@ export default function TeamPage() {
   }
 
   const TABS = [
-    { id: "members" as Tab, label: "Team Members", icon: Users, count: members.length },
-    { id: "roles" as Tab, label: "Roles", icon: ShieldCheck, count: roles.length },
+    { id: "members" as Tab, label: "Team Members", icon: Users, count: membersTotalCount },
+    { id: "roles" as Tab, label: "Roles", icon: ShieldCheck, count: rolesTotalCount },
   ];
+
+  function PaginationBar({ page, totalPages, totalCount, limit, onPrev, onNext }: {
+    page: number; totalPages: number; totalCount: number; limit: number;
+    onPrev: () => void; onNext: () => void;
+  }) {
+    if (totalPages <= 1) return null;
+    const from = (page - 1) * limit + 1;
+    const to = Math.min(page * limit, totalCount);
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+      .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1);
+    const withEllipsis: (number | "...")[] = [];
+    pages.forEach((p, idx) => {
+      if (idx > 0 && (p as number) - (pages[idx - 1] as number) > 1) withEllipsis.push("...");
+      withEllipsis.push(p);
+    });
+    return (
+      <div className="flex items-center justify-between px-5 py-3.5 border-t border-muted/10">
+        <span className="text-[11px] text-muted">
+          Showing <span className="text-foreground font-semibold">{from}–{to}</span> of <span className="text-foreground font-semibold">{totalCount}</span>
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button onClick={onPrev} disabled={page <= 1}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted border border-muted/15 hover:border-cyan/30 hover:text-cyan disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+            <ChevronLeft size={12} /> Prev
+          </button>
+          <div className="flex items-center gap-1">
+            {withEllipsis.map((p, i) =>
+              p === "..." ? (
+                <span key={`ell-${i}`} className="text-[11px] text-muted px-1">…</span>
+              ) : (
+                <span key={p}
+                  className={`w-7 h-7 rounded-lg text-[11px] font-bold flex items-center justify-center ${
+                    p === page ? "bg-cyan/15 text-cyan border border-cyan/30" : "text-muted border border-transparent"
+                  }`}>
+                  {p}
+                </span>
+              )
+            )}
+          </div>
+          <button onClick={onNext} disabled={page >= totalPages}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted border border-muted/15 hover:border-cyan/30 hover:text-cyan disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+            Next <ChevronRight size={12} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -627,9 +700,9 @@ export default function TeamPage() {
         {/* ── Stats Strip ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Total Members", value: members.length, color: "text-foreground" },
+            { label: "Total Members", value: membersTotalCount, color: "text-foreground" },
             { label: "Active", value: members.filter(m => m.is_active).length, color: "text-emerald-600 dark:text-emerald-400" },
-            { label: "Total Roles", value: roles.length, color: "text-violet" },
+            { label: "Total Roles", value: rolesTotalCount, color: "text-violet" },
             { label: "Departments", value: new Set(roles.map(r => r.department)).size, color: "text-cyan" },
           ].map(s => (
             <div key={s.label} className="bg-surface border border-muted/10 rounded-2xl px-5 py-4">
@@ -663,12 +736,12 @@ export default function TeamPage() {
                 <div className="px-6 py-4 border-b border-muted/10 flex items-center gap-2">
                   <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-cyan to-violet" />
                   <span className="text-sm font-semibold text-foreground">All Members</span>
-                  <span className="ml-auto text-[11px] text-muted">{members.length} record{members.length !== 1 ? "s" : ""}</span>
+                  <span className="ml-auto text-[11px] text-muted">{membersTotalCount} record{membersTotalCount !== 1 ? "s" : ""}</span>
                 </div>
 
                 {membersLoading && <div className="flex items-center justify-center py-20 gap-3"><Loader2 size={20} className="text-cyan animate-spin" /><span className="text-sm text-muted">Fetching roster…</span></div>}
                 {!membersLoading && membersError && <div className="flex items-center gap-3 px-6 py-10 text-red-600 dark:text-red-400"><AlertCircle size={18} /><span className="text-sm">{membersError}</span></div>}
-                {!membersLoading && !membersError && members.length === 0 && (
+                {!membersLoading && !membersError && membersTotalCount === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
                     <Users size={32} strokeWidth={1.2} />
                     <p className="text-sm">No team members yet.</p>
@@ -689,6 +762,14 @@ export default function TeamPage() {
                     </table>
                   </div>
                 )}
+                <PaginationBar
+                  page={membersPage}
+                  totalPages={membersTotalPages}
+                  totalCount={membersTotalCount}
+                  limit={MEMBERS_LIMIT}
+                  onPrev={() => setMembersPage(p => Math.max(1, p - 1))}
+                  onNext={() => setMembersPage(p => Math.min(membersTotalPages, p + 1))}
+                />
               </div>
             </motion.div>
           )}
@@ -706,20 +787,33 @@ export default function TeamPage() {
                 </div>
               )}
               {!rolesLoading && !rolesError && roles.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {roles.map((r, i) => <RoleCard key={r._id} role={r} index={i} onEdit={() => setEditingRole(r)} onDelete={() => setRoleToDelete(r._id)} />)}
-                  {/* Ghost "add" card */}
-                  <motion.button
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: roles.length * 0.05 + 0.05 }}
-                    onClick={() => setRoleModalOpen(true)}
-                    className="border-2 border-dashed border-muted/20 rounded-2xl p-5 flex flex-col items-center justify-center gap-2
-                               text-muted hover:border-violet/30 hover:text-violet hover:bg-violet/5 transition-all min-h-[130px]"
-                  >
-                    <Plus size={20} strokeWidth={1.5} />
-                    <span className="text-sm font-semibold">New Role</span>
-                  </motion.button>
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {roles.map((r, i) => <RoleCard key={r._id} role={r} index={i} onEdit={() => setEditingRole(r)} onDelete={() => setRoleToDelete(r._id)} />)}
+                    {rolesPage === rolesTotalPages && (
+                      <motion.button
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: roles.length * 0.05 + 0.05 }}
+                        onClick={() => setRoleModalOpen(true)}
+                        className="border-2 border-dashed border-muted/20 rounded-2xl p-5 flex flex-col items-center justify-center gap-2
+                                   text-muted hover:border-violet/30 hover:text-violet hover:bg-violet/5 transition-all min-h-[130px]"
+                      >
+                        <Plus size={20} strokeWidth={1.5} />
+                        <span className="text-sm font-semibold">New Role</span>
+                      </motion.button>
+                    )}
+                  </div>
+                  <div className="bg-surface border border-muted/10 rounded-2xl mt-2">
+                    <PaginationBar
+                      page={rolesPage}
+                      totalPages={rolesTotalPages}
+                      totalCount={rolesTotalCount}
+                      limit={ROLES_LIMIT}
+                      onPrev={() => setRolesPage(p => Math.max(1, p - 1))}
+                      onNext={() => setRolesPage(p => Math.min(rolesTotalPages, p + 1))}
+                    />
+                  </div>
+                </>
               )}
             </motion.div>
           )}
