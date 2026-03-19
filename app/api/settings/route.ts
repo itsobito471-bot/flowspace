@@ -12,15 +12,15 @@ export async function GET(request: Request) {
     const year = yearParam ? parseInt(yearParam) : new Date().getFullYear();
 
     await dbConnect();
-    
+
     // Fetch settings for the specified year
     let settings = await CompanySettings.findOne({ year }).lean();
-    
+
     // If no settings document exists yet for this year, create the default one
     if (!settings) {
       settings = await CompanySettings.create({
         year,
-        annual_leave_quota: 20,
+        leave_types: [{ name: "Casual Leave", quota: 10 }],
         weekend_policy: [0], // Default Sunday off
         specific_weekend_rules: [],
       });
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     // Fetch public holidays for this year
     const startOfYear = new Date(Date.UTC(year, 0, 1));
     const endOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
-    
+
     const holidays = await Holiday.find({
       date: { $gte: startOfYear, $lte: endOfYear }
     }).sort({ date: 1 }).lean();
@@ -56,8 +56,7 @@ export async function POST(request: Request) {
     await dbConnect();
     const body = await request.json();
 
-    const { year, annual_leave_quota, weekend_policy, specific_weekend_rules, holidays } = body;
-
+    const { year, leave_types, weekend_policy, specific_weekend_rules, holidays } = body;
     if (!year) {
       return NextResponse.json({ success: false, message: "Year is required" }, { status: 400 });
     }
@@ -68,13 +67,13 @@ export async function POST(request: Request) {
     if (!settings) {
       settings = new CompanySettings({
         year,
-        annual_leave_quota,
+        leave_types: leave_types,
         weekend_policy,
         specific_weekend_rules,
       });
       await settings.save();
     } else {
-      settings.annual_leave_quota = annual_leave_quota;
+      settings.leave_types = leave_types;
       settings.weekend_policy = weekend_policy;
       settings.specific_weekend_rules = specific_weekend_rules;
       await settings.save();

@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState(false);
 
   // Form State
-  const [leaveQuota, setLeaveQuota] = useState(20);
+  const [leaveTypes, setLeaveTypes] = useState<{ name: string, quota: number }[]>([]);
   const [weekendPolicy, setWeekendPolicy] = useState<number[]>([]);
   // specificRules format: "day-week" e.g., "6-2" means Saturday(6), Week 2.
   const [specificRules, setSpecificRules] = useState<string[]>([]);
@@ -32,9 +32,9 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((j) => {
         if (!j.success) throw new Error(j.message);
-        setLeaveQuota(j.data.settings.annual_leave_quota);
+        setLeaveTypes(j.data.settings.leave_types || []);
         setWeekendPolicy(j.data.settings.weekend_policy);
-        
+
         // Map specific rules into array of "day-week" strings
         const rules: string[] = [];
         for (const rule of j.data.settings.specific_weekend_rules || []) {
@@ -118,7 +118,7 @@ export default function SettingsPage() {
         if (!rulesMap.has(day)) rulesMap.set(day, []);
         rulesMap.get(day)!.push(week);
       }
-      
+
       const specific_weekend_rules = Array.from(rulesMap.entries()).map(([day, weeks]) => ({
         dayOfWeek: day,
         weekNumbers: weeks,
@@ -130,7 +130,7 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           year: selectedYear,
-          annual_leave_quota: leaveQuota,
+          leave_types: leaveTypes,
           weekend_policy: weekendPolicy,
           specific_weekend_rules,
           holidays,
@@ -139,7 +139,7 @@ export default function SettingsPage() {
 
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
-      
+
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
@@ -178,7 +178,7 @@ export default function SettingsPage() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
-      
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-muted/10 pb-6">
         <div className="flex items-center gap-3">
@@ -195,8 +195,8 @@ export default function SettingsPage() {
         <div className="flex items-center gap-2">
           <Calendar size={16} className="text-muted" />
           <span className="text-sm font-semibold text-muted uppercase tracking-widest hidden sm:inline-block">Config Year:</span>
-          <select 
-            value={selectedYear} 
+          <select
+            value={selectedYear}
             onChange={e => setSelectedYear(Number(e.target.value))}
             className="bg-surface border border-muted/20 rounded-xl px-3 py-1.5 text-foreground font-bold focus:outline-none focus:border-cyan appearance-none cursor-pointer"
           >
@@ -228,22 +228,71 @@ export default function SettingsPage() {
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-cyan" size={32} /></div>
       ) : (
         <div className="bg-surface border border-muted/10 rounded-2xl p-6 lg:p-8 space-y-8">
-          
+
           {/* Leave Quota */}
+          {/* Categorized Leave Types */}
           <section>
-            <h2 className="text-lg font-bold text-foreground mb-4">Base Annual Leave Quota ({selectedYear})</h2>
-            <p className="text-sm text-muted mb-4">
-              This is the standard number of leaves available to every employee. Employees can earn extra "Flex Leaves" by working on off days.
-            </p>
-            <div className="flex items-center gap-4">
-              <input
-                type="number"
-                min="0"
-                value={leaveQuota}
-                onChange={(e) => setLeaveQuota(Number(e.target.value))}
-                className="w-32 bg-background border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:border-cyan focus:outline-none transition-all"
-              />
-              <span className="text-sm text-muted font-semibold tracking-widest uppercase">Days / Year</span>
+            <div className="flex justify-between items-end mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground mb-2">Leave Categories ({selectedYear})</h2>
+                <p className="text-sm text-muted">Define the types of leaves available and their yearly quotas.</p>
+              </div>
+              <button
+                onClick={() => setLeaveTypes(prev => [...prev, { name: "", quota: 0 }])}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-muted/20 text-xs font-bold text-foreground hover:bg-muted/10 transition-colors"
+              >
+                <Plus size={14} /> Add Category
+              </button>
+            </div>
+
+            <div className="bg-background rounded-xl border border-muted/10 overflow-hidden">
+              {leaveTypes.length === 0 ? (
+                <div className="p-8 text-center text-sm text-muted">No leave categories defined.</div>
+              ) : (
+                <div className="divide-y divide-muted/10">
+                  {leaveTypes.map((lt, idx) => (
+                    <div key={idx} className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-muted/5 transition-colors">
+                      <div className="flex-1">
+                        <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Category Name</label>
+                        <input
+                          type="text"
+                          value={lt.name}
+                          onChange={e => {
+                            const copy = [...leaveTypes];
+                            copy[idx].name = e.target.value;
+                            setLeaveTypes(copy);
+                          }}
+                          placeholder="e.g. Sick Leave"
+                          className="w-full bg-transparent border-b border-muted/20 px-0 py-1.5 text-sm text-foreground focus:outline-none focus:border-cyan transition-all"
+                        />
+                      </div>
+                      <div className="w-full sm:w-32">
+                        <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Days / Year</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={lt.quota}
+                          onChange={e => {
+                            const copy = [...leaveTypes];
+                            copy[idx].quota = Number(e.target.value);
+                            setLeaveTypes(copy);
+                          }}
+                          className="w-full bg-transparent border-b border-muted/20 px-0 py-1.5 text-sm text-foreground focus:outline-none focus:border-cyan transition-all"
+                        />
+                      </div>
+                      <div className="sm:pt-5 pt-0 flex justify-end">
+                        <button
+                          onClick={() => setLeaveTypes(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-2 rounded-xl text-red-500/70 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                          title="Remove Category"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 
@@ -253,7 +302,7 @@ export default function SettingsPage() {
           <section>
             <h2 className="text-lg font-bold text-foreground mb-2">Standard Weekly Offs</h2>
             <p className="text-sm text-muted mb-4">
-              Select the days that are considered regular weekly holidays for all employees. 
+              Select the days that are considered regular weekly holidays for all employees.
               Checking in on these days grants an automatic <b>Flex Leave (Comp Off)</b>.
             </p>
             <div className="flex flex-wrap gap-3">
@@ -264,8 +313,8 @@ export default function SettingsPage() {
                     key={day}
                     onClick={() => toggleWeekend(idx)}
                     className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border
-                      ${checked 
-                        ? "bg-cyan text-white border-cyan shadow-md shadow-cyan/25" 
+                      ${checked
+                        ? "bg-cyan text-white border-cyan shadow-md shadow-cyan/25"
                         : "bg-surface border-muted/20 text-muted hover:border-muted/40 hover:text-foreground"
                       }
                     `}
@@ -302,8 +351,8 @@ export default function SettingsPage() {
                             key={key}
                             onClick={() => toggleSpecificRule(idx, weekNum)}
                             className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all border
-                              ${checked 
-                                ? "bg-violet text-white border-violet shadow-md shadow-violet/25" 
+                              ${checked
+                                ? "bg-violet text-white border-violet shadow-md shadow-violet/25"
                                 : "bg-surface border-muted/20 text-muted hover:border-muted/40 hover:text-foreground"}
                             `}
                             title={`Week ${weekNum}`}
@@ -330,7 +379,7 @@ export default function SettingsPage() {
                   Add specific, one-off dates where the office is closed.
                 </p>
               </div>
-              <button 
+              <button
                 onClick={addHoliday}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-muted/20 text-xs font-bold text-foreground hover:bg-muted/10 transition-colors"
               >
@@ -377,7 +426,7 @@ export default function SettingsPage() {
                         </select>
                       </div>
                       <div className="sm:pt-5 pt-0 flex justify-end">
-                        <button 
+                        <button
                           onClick={() => removeHoliday(idx)}
                           className="p-2 rounded-xl text-red-500/70 hover:bg-red-500/10 hover:text-red-500 transition-colors"
                           title="Remove Holiday"
