@@ -29,9 +29,9 @@ export async function GET(request: Request) {
     const isAdmin = (session.user as any)?.role?.level === "ADMIN";
 
     const { searchParams } = new URL(request.url);
-    const page  = Math.max(1, parseInt(searchParams.get("page")  ?? "1",  10));
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
     const statusFilter = searchParams.get("status");
 
     const query: Record<string, any> = isAdmin ? {} : { user_id: userId };
@@ -81,20 +81,20 @@ export async function POST(request: Request) {
 
     await dbConnect();
 
-    const userId   = (session.user as any).id;
+    const userId = (session.user as any).id;
     const userName = session.user?.name ?? "An employee";
-    const body     = await request.json();
-    const { start_date, end_date, reason } = body;
+    const body = await request.json();
+    const { start_date, end_date, reason, leave_type } = body;
 
-    if (!start_date || !end_date || !reason?.trim()) {
+    if (!start_date || !end_date || !reason?.trim() || !leave_type?.trim()) {
       return NextResponse.json(
-        { success: false, message: "Start date, end date, and reason are required." },
+        { success: false, message: "Start date, end date, reason, and leave type are required." },
         { status: 400 }
       );
     }
 
     const start = new Date(start_date);
-    const end   = new Date(end_date);
+    const end = new Date(end_date);
     if (end < start) {
       return NextResponse.json(
         { success: false, message: "End date cannot be before start date." },
@@ -106,11 +106,12 @@ export async function POST(request: Request) {
 
     // Create the leave record
     const leave = await Leave.create({
-      user_id:    userId,
+      user_id: userId,
       start_date: start,
-      end_date:   end,
-      reason:     reason.trim(),
-      status:     "PENDING",
+      end_date: end,
+      reason: reason.trim(),
+      leave_type: leave_type.trim(),
+      status: "PENDING",
     });
 
     // Fetch populated result + admin IDs in parallel
@@ -140,15 +141,15 @@ export async function POST(request: Request) {
     // Fire-and-forget notification creation — don't block the response
     if (adminUsers.length > 0) {
       const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      const endLabel   = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const endLabel = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       const notifications = adminUsers.map((admin: any) => ({
         recipient_id: admin._id,
-        type:         "LEAVE_REQUEST" as const,
-        title:        "New Leave Request",
-        message:      `${userName} requested ${days} day${days !== 1 ? "s" : ""} of leave (${startLabel} – ${endLabel}).`,
-        link:         "/leave?tab=pending",
-        related_id:   leave._id,
-        is_read:      false,
+        type: "LEAVE_REQUEST" as const,
+        title: "New Leave Request",
+        message: `${userName} requested ${days} day${days !== 1 ? "s" : ""} of leave (${startLabel} – ${endLabel}).`,
+        link: "/leave?tab=pending",
+        related_id: leave._id,
+        is_read: false,
       }));
       Notification.insertMany(notifications).catch((e) =>
         console.error("[POST /api/leave] notify error", e)

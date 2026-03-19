@@ -6,21 +6,6 @@ import { Leave } from "@/src/lib/models/Leave";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import mongoose from "mongoose";
 
-/**
- * GET /api/leave/balance?userId=<id>
- *
- * Returns the leave quota + used + remaining for the specified user
- * (or the session user if userId is omitted).
- * Admin may pass ?userId= to look up any employee's balance.
- *
- * Response shape:
- *  { success, data: { quota, used_days, pending_days, remaining, year } }
- *
- * Performance:
- *  - Single MongoDB aggregation pipeline (no N+1)
- *  - CompanySettings fetched with .lean() + .select()
- *  - Index on Leave: { user_id:1, status:1 } + { start_date:1, end_date:1 }  ← already exists
- */
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -35,24 +20,22 @@ export async function GET(request: Request) {
     const queryUserId = searchParams.get("userId");
 
     // Only admins may look up another user's balance
-    const targetUserId =
-      isAdmin && queryUserId ? queryUserId : sessionUserId;
+    const targetUserId = isAdmin && queryUserId ? queryUserId : sessionUserId;
 
     await dbConnect();
 
     const year = new Date().getFullYear();
     const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
-    const yearEnd   = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+    const yearEnd = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
     // Run both queries in parallel
-    const [settingsDoc, [agg]] = await Promise.all([
+    const [settingsDoc, aggArray] = await Promise.all([
       CompanySettings.findOne({ year })
-        .select("annual_leave_quota")
+        .select("leave_types")
         .lean()
         .exec(),
 
-      // Aggregate approved & pending leave days for this user in the current year
-      // We use $sum of ($dateDiff + 1) for each matching doc — no JS iteration
+      // Aggregate approved & pending leave days, grouped by BOTH status AND leave_type
       Leave.aggregate([
         {
           $match: {
@@ -63,7 +46,8 @@ export async function GET(request: Request) {
         },
         {
           $group: {
-            _id: "$status",
+            // Group by a compound key so we can separate Sick Leave vs Casual Leave
+            _id: { status: "$status", leave_type: "$leave_type" },
             totalDays: {
               $sum: {
                 $add: [
@@ -74,7 +58,7 @@ export async function GET(request: Request) {
                       unit: "day",
                     },
                   },
-                  1, // inclusive
+                  1, // inclusive days
                 ],
               },
             },
@@ -83,23 +67,39 @@ export async function GET(request: Request) {
       ]).exec(),
     ]);
 
-    const quota: number = (settingsDoc as any)?.annual_leave_quota ?? 20;
+    // Extract the leave categories defined by the Admin
+    const leaveTypes: { name: string; quota: number }[] = (settingsDoc as any)?.leave_types || [];
 
-    // Rebuild from aggregation groups
-    let used_days = 0;
-    let pending_days = 0;
-    if (Array.isArray(agg)) {
-      for (const row of agg as any[]) {
-        if (row._id === "APPROVED") used_days = row.totalDays;
-        if (row._id === "PENDING")  pending_days = row.totalDays;
+    // Map through the categories and calculate the balances for each one
+    const balances = leaveTypes.map((category) => {
+      let used_days = 0;
+      let pending_days = 0;
+
+      if (Array.isArray(aggArray)) {
+        for (const row of aggArray) {
+          // If the aggregation row matches the current category we are calculating
+          if (row._id.leave_type === category.name) {
+            if (row._id.status === "APPROVED") used_days = row.totalDays;
+            if (row._id.status === "PENDING") pending_days = row.totalDays;
+          }
+        }
       }
-    }
 
-    const remaining = Math.max(0, quota - used_days);
+      return {
+        type: category.name,
+        quota: category.quota,
+        used_days,
+        pending_days,
+        remaining: Math.max(0, category.quota - used_days),
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data: { quota, used_days, pending_days, remaining, year },
+      data: {
+        year,
+        balances, // This is now an array of breakdown objects!
+      },
     });
   } catch (error: any) {
     console.error("[GET /api/leave/balance]", error);
