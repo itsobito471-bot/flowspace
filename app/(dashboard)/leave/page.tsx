@@ -51,6 +51,14 @@ interface Pagination {
   totalPages: number;
 }
 
+interface LeaveBalance {
+  quota: number;
+  used_days: number;
+  pending_days: number;
+  remaining: number;
+  year: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,10 +124,11 @@ function PaginationBar({
 // ─────────────────────────────────────────────────────────────────────────────
 //  Request Leave Modal
 // ─────────────────────────────────────────────────────────────────────────────
-function RequestLeaveModal({ open, onClose, onCreated }: {
+function RequestLeaveModal({ open, onClose, onCreated, balance }: {
   open: boolean;
   onClose: () => void;
   onCreated: (leave: LeaveRequest) => void;
+  balance: LeaveBalance | null;
 }) {
   const [form, setForm] = useState({ start_date: "", end_date: "", reason: "" });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
@@ -227,6 +236,41 @@ function RequestLeaveModal({ open, onClose, onCreated }: {
 
               <form onSubmit={handleSubmit} noValidate>
                 <div className="px-6 py-5 space-y-4">
+
+                  {/* ── Leave Balance Banner ── */}
+                  {balance && (
+                    <div className="rounded-xl border border-muted/10 bg-muted/5 p-3.5">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold tracking-widest uppercase text-muted/70">
+                          {balance.year} Leave Balance
+                        </span>
+                        <span className={`text-xs font-black ${
+                          balance.remaining <= 0 ? "text-red-400" :
+                          balance.remaining <= 3 ? "text-amber-400" : "text-emerald-400"
+                        }`}>
+                          {balance.remaining} remaining
+                        </span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="h-1.5 bg-muted/15 rounded-full overflow-hidden mb-2">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            balance.remaining <= 0 ? "bg-red-500" :
+                            balance.remaining <= 3 ? "bg-amber-400" : "bg-emerald-500"
+                          }`}
+                          style={{ width: `${Math.min(100, (balance.used_days / balance.quota) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex gap-4 text-[10px] text-muted">
+                        <span><span className="text-foreground font-semibold">{balance.used_days}</span> used</span>
+                        {balance.pending_days > 0 && (
+                          <span><span className="text-amber-400 font-semibold">{balance.pending_days}</span> pending</span>
+                        )}
+                        <span><span className="text-foreground font-semibold">{balance.quota}</span> total quota</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80">Start Date</label>
@@ -246,9 +290,20 @@ function RequestLeaveModal({ open, onClose, onCreated }: {
 
                   {days !== null && (
                     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-cyan/5 border border-cyan/15 rounded-xl">
-                      <CalendarDays size={13} className="text-cyan" />
-                      <span className="text-xs text-cyan font-semibold">{days} day{days !== 1 ? "s" : ""} selected</span>
+                      className={`flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl border ${
+                        balance && days > balance.remaining
+                          ? "bg-red-500/8 border-red-500/20"
+                          : "bg-cyan/5 border-cyan/15"
+                      }`}>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays size={13} className={balance && days > balance.remaining ? "text-red-400" : "text-cyan"} />
+                        <span className={`text-xs font-semibold ${balance && days > balance.remaining ? "text-red-400" : "text-cyan"}`}>
+                          {days} day{days !== 1 ? "s" : ""} selected
+                        </span>
+                      </div>
+                      {balance && days > balance.remaining && (
+                        <span className="text-[10px] font-bold text-red-400">Exceeds balance by {days - balance.remaining} day{days - balance.remaining !== 1 ? "s" : ""}</span>
+                      )}
                     </motion.div>
                   )}
 
@@ -294,10 +349,18 @@ function AdminActionModal({ leave, action, open, onClose, onActioned }: {
   const [lop, setLop] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [empBalance, setEmpBalance] = useState<LeaveBalance | null>(null);
 
   useEffect(() => {
-    if (!open) { setLop(false); setApiError(null); }
-  }, [open]);
+    if (!open) { setLop(false); setApiError(null); setEmpBalance(null); return; }
+    // Fetch the employee's leave balance when modal opens
+    if (leave?.user_id?._id) {
+      fetch(`/api/leave/balance?userId=${leave.user_id._id}`)
+        .then(r => r.json())
+        .then(j => j.success && setEmpBalance(j.data))
+        .catch(() => {});
+    }
+  }, [open, leave]);
 
   async function handleConfirm() {
     if (!leave || !action) return;
@@ -486,6 +549,17 @@ function LeavePageInner() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [actionLeave, setActionLeave] = useState<LeaveRequest | null>(null);
   const [actionType, setActionType] = useState<"APPROVED" | "REJECTED" | null>(null);
+  const [myBalance, setMyBalance] = useState<LeaveBalance | null>(null);
+
+  const fetchBalance = useCallback(async () => {
+    try {
+      const res = await fetch("/api/leave/balance");
+      const json = await res.json();
+      if (json.success) setMyBalance(json.data);
+    } catch (e) {
+      console.error("Error fetching balance:", e);
+    }
+  }, []);
 
   // Stats for employee view
   const approvedCount = leaves.filter((l) => l.status === "APPROVED").length;
@@ -513,8 +587,11 @@ function LeavePageInner() {
   }, [isAdmin, adminTab]);
 
   useEffect(() => {
-    if (status === "authenticated") fetchLeaves(page);
-  }, [status, page, fetchLeaves]);
+    if (status === "authenticated") {
+      fetchLeaves(page);
+      fetchBalance();
+    }
+  }, [status, page, fetchLeaves, fetchBalance]);
 
   // Sync tab from URL on mount
   useEffect(() => {
@@ -553,8 +630,11 @@ function LeavePageInner() {
       <RequestLeaveModal
         open={requestModalOpen}
         onClose={() => setRequestModalOpen(false)}
+        balance={myBalance}
         onCreated={(leave) => {
           setLeaves((prev) => [leave, ...prev]);
+          // Refresh balance after submitting
+          fetchBalance();
         }}
       />
       <AdminActionModal
