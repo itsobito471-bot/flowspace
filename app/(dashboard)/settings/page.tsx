@@ -25,6 +25,11 @@ export default function SettingsPage() {
   const [holidays, setHolidays] = useState<{ title: string; date: string; type: string }[]>([]);
   const [allowMultiCheckins, setAllowMultiCheckins] = useState(false);
 
+  const [workStartTime, setWorkStartTime] = useState("09:00");
+  const [workEndTime, setWorkEndTime] = useState("18:00");
+  const [isOvertime, setIsOvertime] = useState(false);
+  const [overtimeRate, setOvertimeRate] = useState(0);
+
   useEffect(() => {
     if (status !== "authenticated" || !isAdmin) return;
 
@@ -36,6 +41,11 @@ export default function SettingsPage() {
         setLeaveTypes(j.data.settings.leave_types || []);
         setWeekendPolicy(j.data.settings.weekend_policy);
         setAllowMultiCheckins(j.data.settings.allow_multi_checkins || false);
+
+        setWorkStartTime(j.data.settings.work_start_time || "09:00");
+        setWorkEndTime(j.data.settings.work_end_time || "18:00");
+        setIsOvertime(j.data.settings.is_overtime_applicable || false);
+        setOvertimeRate(j.data.settings.overtime_hourly_rate || 0);
 
         // Map specific rules into array of "day-week" strings
         const rules: string[] = [];
@@ -137,6 +147,10 @@ export default function SettingsPage() {
           specific_weekend_rules,
           holidays,
           allow_multi_checkins: allowMultiCheckins,
+          work_start_time: workStartTime,
+          work_end_time: workEndTime,
+          is_overtime_applicable: isOvertime,
+          overtime_hourly_rate: overtimeRate,
         }),
       });
 
@@ -242,7 +256,7 @@ export default function SettingsPage() {
               <div>
                 <p className="font-bold text-sm text-foreground">Allow Multiple Check-In/Check-Outs per Day</p>
                 <p className="text-xs text-muted mt-1 max-w-sm">
-                  If enabled, users can check in again after checking out. Useful for managing separate shifts. 
+                  If enabled, users can check in again after checking out. Useful for managing separate shifts.
                   If disabled, once checked out, the attendance log is closed for the day.
                 </p>
               </div>
@@ -254,6 +268,73 @@ export default function SettingsPage() {
                   className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${allowMultiCheckins ? "left-7" : "left-1"}`}
                 />
               </button>
+            </div>
+
+
+            {/* Standard Work Hours */}
+            <div className="mt-6">
+              <h3 className="text-sm font-bold text-foreground mb-2">Standard Work Hours</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    value={workStartTime}
+                    onChange={(e) => setWorkStartTime(e.target.value)}
+                    className="w-full bg-background border border-muted/20 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-cyan transition-all"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">End Time</label>
+                  <input
+                    type="time"
+                    value={workEndTime}
+                    onChange={(e) => setWorkEndTime(e.target.value)}
+                    className="w-full bg-background border border-muted/20 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-cyan transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Overtime Policy */}
+            <div className="mt-6 bg-background p-4 rounded-xl border border-muted/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-sm text-foreground">Enable Overtime Pay</p>
+                  <p className="text-xs text-muted mt-1">
+                    If enabled, employees working past the End Time will log overtime hours for payroll.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsOvertime(prev => !prev)}
+                  className={`w-12 h-6 rounded-full relative transition-colors ${isOvertime ? "bg-cyan" : "bg-muted/30"}`}
+                >
+                  <div
+                    className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${isOvertime ? "left-7" : "left-1"}`}
+                  />
+                </button>
+              </div>
+
+              {/* Only show the hourly rate input if overtime is enabled */}
+              <AnimatePresence>
+                {isOvertime && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="pt-2 border-t border-muted/10"
+                  >
+                    <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Overtime Hourly Rate ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={overtimeRate}
+                      onChange={(e) => setOvertimeRate(Number(e.target.value))}
+                      className="w-32 bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-cyan transition-all"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </section>
 

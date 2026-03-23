@@ -24,6 +24,10 @@ export async function GET(request: Request) {
         weekend_policy: [0], // Default Sunday off
         specific_weekend_rules: [],
         allow_multi_checkins: false,
+        work_start_time: "09:00",
+        work_end_time: "18:00",
+        is_overtime_applicable: false,
+        overtime_hourly_rate: 0,
       });
     }
 
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
     await dbConnect();
     const body = await request.json();
 
-    const { year, leave_types, weekend_policy, specific_weekend_rules, holidays, allow_multi_checkins } = body;
+    const { year, leave_types, weekend_policy, specific_weekend_rules, holidays, allow_multi_checkins, work_start_time, work_end_time, is_overtime_applicable, overtime_hourly_rate } = body;
     if (!year) {
       return NextResponse.json({ success: false, message: "Year is required" }, { status: 400 });
     }
@@ -72,6 +76,10 @@ export async function POST(request: Request) {
         weekend_policy,
         specific_weekend_rules,
         allow_multi_checkins: allow_multi_checkins || false,
+        work_start_time: work_start_time || "09:00",             // NEW
+        work_end_time: work_end_time || "18:00",                 // NEW
+        is_overtime_applicable: is_overtime_applicable || false, // NEW
+        overtime_hourly_rate: overtime_hourly_rate || 0,         // NEW
       });
       await settings.save();
     } else {
@@ -81,6 +89,11 @@ export async function POST(request: Request) {
       if (allow_multi_checkins !== undefined) {
         settings.allow_multi_checkins = allow_multi_checkins;
       }
+
+      if (work_start_time !== undefined) settings.work_start_time = work_start_time;
+      if (work_end_time !== undefined) settings.work_end_time = work_end_time;
+      if (is_overtime_applicable !== undefined) settings.is_overtime_applicable = is_overtime_applicable;
+      if (overtime_hourly_rate !== undefined) settings.overtime_hourly_rate = overtime_hourly_rate;
       await settings.save();
     }
 

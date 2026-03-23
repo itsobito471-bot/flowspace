@@ -13,6 +13,13 @@ export interface ICompanySettings extends Document {
     weekNumbers: number[]; // e.g., [2, 4] for 2nd and 4th Saturday
   }[];
   allow_multi_checkins: boolean;
+
+  work_start_time: string;
+  work_end_time: string;
+  is_overtime_applicable: boolean;
+  overtime_hourly_rate: number;
+
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +49,10 @@ const CompanySettingsSchema = new Schema<ICompanySettings>(
       },
     ],
     allow_multi_checkins: { type: Boolean, default: false },
+    work_start_time: { type: String, default: "09:00" },
+    work_end_time: { type: String, default: "18:00" },
+    is_overtime_applicable: { type: Boolean, default: false },
+    overtime_hourly_rate: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
