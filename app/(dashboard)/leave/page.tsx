@@ -361,7 +361,7 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
                     Cancel
                   </button>
                   <button type="submit" disabled={submitting || success || (selectedBal ? days! > selectedBal.remaining : false)}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-[#0A0A0B] bg-gradient-to-r from-cyan to-[#0099cc] shadow-[0_0_20px_rgba(0,242,254,0.2)] hover:shadow-[0_0_28px_rgba(0,242,254,0.35)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
                     {submitting ? <><Loader2 size={14} className="animate-spin" /> Submitting…</> : "Submit Request"}
                   </button>
                 </div>
@@ -486,8 +486,8 @@ function AdminActionModal({ leave, action, open, onClose, onActioned }: {
                 </button>
                 <button onClick={handleConfirm} disabled={submitting}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${isApprove
-                      ? "bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-                      : "bg-red-500 hover:bg-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                      ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                      : "bg-red-500 text-white hover:bg-red-600"
                     }`}>
                   {submitting ? <Loader2 size={14} className="animate-spin" /> : isApprove ? "Approve" : "Reject"}
                 </button>
@@ -717,7 +717,7 @@ function LeavePageInner() {
           {!isAdmin && (
             <button
               onClick={() => setRequestModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan to-[#0099cc] text-[#0A0A0B] text-sm font-bold tracking-tight shadow-[0_0_24px_rgba(0,242,254,0.25)] hover:shadow-[0_0_32px_rgba(0,242,254,0.40)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black text-sm font-bold tracking-tight hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
               <Plus size={15} strokeWidth={2.5} /> Request Leave
             </button>
           )}

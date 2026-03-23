@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/src/lib/mongodb";
 import { User } from "@/src/lib/models/User";
 import "@/src/lib/models/Role"; // ensure Role schema is registered for .populate()
+import { Attendance } from "@/src/lib/models/Attendance";
 import bcrypt from "bcryptjs";
+
+function getTodayDate() {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
 
 export async function GET(request: Request) {
   try {
@@ -25,9 +32,25 @@ export async function GET(request: Request) {
       User.countDocuments({}),
     ]);
 
+    const today = getTodayDate();
+    const userIds = users.map(u => u._id);
+    const attendances = await Attendance.find({ date: today, user_id: { $in: userIds } }).lean();
+
+    const usersWithAttendance = users.map(u => {
+      const record = attendances.find(a => String(a.user_id) === String(u._id));
+      return {
+        ...u,
+        today_attendance: record ? {
+          check_in: record.check_in,
+          check_out: record.check_out,
+          status: record.status
+        } : null
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      data: users,
+      data: usersWithAttendance,
       pagination: {
         page,
         limit,

@@ -12,6 +12,7 @@ export interface ICompanySettings extends Document {
     dayOfWeek: number; // e.g., 6 for Saturday
     weekNumbers: number[]; // e.g., [2, 4] for 2nd and 4th Saturday
   }[];
+  allow_multi_checkins: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +41,7 @@ const CompanySettingsSchema = new Schema<ICompanySettings>(
         weekNumbers: { type: [Number], required: true },
       },
     ],
+    allow_multi_checkins: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

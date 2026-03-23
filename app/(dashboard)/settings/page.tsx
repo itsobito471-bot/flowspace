@@ -23,6 +23,7 @@ export default function SettingsPage() {
   // specificRules format: "day-week" e.g., "6-2" means Saturday(6), Week 2.
   const [specificRules, setSpecificRules] = useState<string[]>([]);
   const [holidays, setHolidays] = useState<{ title: string; date: string; type: string }[]>([]);
+  const [allowMultiCheckins, setAllowMultiCheckins] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated" || !isAdmin) return;
@@ -34,6 +35,7 @@ export default function SettingsPage() {
         if (!j.success) throw new Error(j.message);
         setLeaveTypes(j.data.settings.leave_types || []);
         setWeekendPolicy(j.data.settings.weekend_policy);
+        setAllowMultiCheckins(j.data.settings.allow_multi_checkins || false);
 
         // Map specific rules into array of "day-week" strings
         const rules: string[] = [];
@@ -134,6 +136,7 @@ export default function SettingsPage() {
           weekend_policy: weekendPolicy,
           specific_weekend_rules,
           holidays,
+          allow_multi_checkins: allowMultiCheckins,
         }),
       });
 
@@ -228,6 +231,33 @@ export default function SettingsPage() {
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-cyan" size={32} /></div>
       ) : (
         <div className="bg-surface border border-muted/10 rounded-2xl p-6 lg:p-8 space-y-8">
+
+          {/* General Attendance Rules */}
+          <section>
+            <h2 className="text-lg font-bold text-foreground mb-2">General Attendance Rules</h2>
+            <p className="text-sm text-muted mb-4">
+              Configure baseline behavior for the attendance tracking system.
+            </p>
+            <div className="flex items-center justify-between bg-background p-4 rounded-xl border border-muted/10">
+              <div>
+                <p className="font-bold text-sm text-foreground">Allow Multiple Check-In/Check-Outs per Day</p>
+                <p className="text-xs text-muted mt-1 max-w-sm">
+                  If enabled, users can check in again after checking out. Useful for managing separate shifts. 
+                  If disabled, once checked out, the attendance log is closed for the day.
+                </p>
+              </div>
+              <button
+                onClick={() => setAllowMultiCheckins(prev => !prev)}
+                className={`w-12 h-6 rounded-full relative transition-colors ${allowMultiCheckins ? "bg-cyan" : "bg-muted/30"}`}
+              >
+                <div
+                  className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${allowMultiCheckins ? "left-7" : "left-1"}`}
+                />
+              </button>
+            </div>
+          </section>
+
+          <hr className="border-muted/10" />
 
           {/* Leave Quota */}
           {/* Categorized Leave Types */}
@@ -446,7 +476,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan to-violet text-white text-sm font-bold tracking-tight shadow-[0_4px_24px_rgba(0,242,254,0.25)] hover:shadow-[0_6px_32px_rgba(0,242,254,0.40)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-black text-sm font-bold tracking-tight hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               {saving ? "Saving Changes..." : `Save Settings for ${selectedYear}`}

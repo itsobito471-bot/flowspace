@@ -161,7 +161,7 @@ export default function LoginPage() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="relative w-full bg-gradient-to-r from-cyan to-violet text-black font-semibold rounded-full px-4 py-3.5 hover:opacity-90 transition-opacity"
+                    className="relative w-full bg-white text-black font-semibold rounded-full px-4 py-3.5 hover:bg-white/90 transition-opacity"
                   >
                     Login to Workspace
                   </motion.button>

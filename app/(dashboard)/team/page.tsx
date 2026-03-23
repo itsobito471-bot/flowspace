@@ -47,6 +47,11 @@ export interface TeamMember {
   is_active: boolean;
   role_id: Role | null;
   createdAt: string;
+  today_attendance?: {
+    check_in: string | null;
+    check_out: string | null;
+    status: string;
+  } | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,6 +59,11 @@ export interface TeamMember {
 // ─────────────────────────────────────────────────────────────────────────────
 function initials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function formatTime(dateString: string | null | undefined) {
+  if (!dateString) return "--:--";
+  return new Date(dateString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 const LEVEL_STYLES: Record<string, string> = {
@@ -212,7 +222,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
                 </div>
                 <div className="flex gap-3 px-6 py-4 border-t border-muted/10">
                   <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 hover:text-foreground transition-all">Cancel</button>
-                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyan to-[#0099cc] shadow-[0_0_20px_rgba(0,242,254,0.2)] hover:shadow-[0_0_28px_rgba(0,242,254,0.35)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
                     {submitting ? <><Loader2 size={14} className="animate-spin" />Creating…</> : "Create Employee"}
                   </button>
                 </div>
@@ -343,7 +353,7 @@ function CreateRoleModal({ open, onClose, onCreated }: {
 
                 <div className="flex gap-3 px-6 py-4 border-t border-muted/10">
                   <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 hover:text-foreground transition-all">Cancel</button>
-                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet to-purple-600 shadow-[0_0_20px_rgba(139,92,246,0.2)] hover:shadow-[0_0_28px_rgba(139,92,246,0.35)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
                     {submitting ? <><Loader2 size={14} className="animate-spin" />Creating…</> : "Create Role"}
                   </button>
                 </div>
@@ -431,6 +441,12 @@ function MemberRow({ member, index, onEdit, onDelete }: { member: TeamMember; in
         ) : (
           <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400/70"><XCircle size={13} /><span className="text-[12px] font-semibold">Inactive</span></div>
         )}
+      </td>
+      <td className="px-6 py-4">
+        <span className="text-[12px] font-medium text-foreground">{formatTime(member.today_attendance?.check_in)}</span>
+      </td>
+      <td className="px-6 py-4">
+        <span className="text-[12px] font-medium text-foreground">{formatTime(member.today_attendance?.check_out)}</span>
       </td>
       <td className="px-6 py-4 text-[12px] text-muted hidden xl:table-cell">
         {new Date(member.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -686,12 +702,12 @@ export default function TeamPage() {
           {/* CTAs — contextual per tab */}
           {tab === "members" ? (
             <button id="add-employee-btn" onClick={() => setEmpModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan to-[#0099cc] text-[#0A0A0B] text-sm font-bold tracking-tight shadow-[0_0_24px_rgba(0,242,254,0.25)] hover:shadow-[0_0_32px_rgba(0,242,254,0.40)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black text-sm font-bold tracking-tight hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
               <UserPlus size={15} strokeWidth={2.5} />Add Employee
             </button>
           ) : (
             <button id="create-role-btn" onClick={() => setRoleModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet to-purple-600 text-white text-sm font-bold tracking-tight shadow-[0_0_24px_rgba(139,92,246,0.25)] hover:shadow-[0_0_32px_rgba(139,92,246,0.40)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black text-sm font-bold tracking-tight hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
               <Plus size={15} strokeWidth={2.5} />Create Role
             </button>
           )}
@@ -753,8 +769,8 @@ export default function TeamPage() {
                     <table className="w-full text-left">
                       <thead>
                         <tr className="border-b border-muted/10">
-                          {["Member", "Role & Department", "Status", "Joined", "Actions"].map((col, i) => (
-                            <th key={col} className={`px-6 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70 ${i === 3 ? "hidden xl:table-cell" : ""} ${i === 4 ? "text-right" : ""}`}>{col}</th>
+                          {["Member", "Role & Department", "Status", "Check In", "Check Out", "Joined", "Actions"].map((col, i) => (
+                            <th key={col} className={`px-6 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70 ${i === 5 ? "hidden xl:table-cell" : ""} ${i === 6 ? "text-right" : ""}`}>{col}</th>
                           ))}
                         </tr>
                       </thead>

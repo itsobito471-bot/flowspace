@@ -228,7 +228,7 @@ export function DeleteModal({
               <p className="text-sm text-muted mb-8 px-4">{description}</p>
               <div className="flex gap-3">
                 <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 hover:text-foreground transition-all">Cancel</button>
-                <button type="button" onClick={onConfirm} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_28px_rgba(239,68,68,0.35)] disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
                   {isDeleting ? <Loader2 size={16} className="animate-spin" /> : "Delete"}
                 </button>
               </div>

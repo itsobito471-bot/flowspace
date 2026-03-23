@@ -168,7 +168,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full md:w-auto px-8 py-3 rounded-xl text-sm font-bold text-white bg-cyan hover:bg-cyan/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(45,212,191,0.2)] hover:shadow-[0_0_28px_rgba(45,212,191,0.35)]"
+                className="w-full md:w-auto px-8 py-3 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={16} /> Save Identity</>}
               </button>

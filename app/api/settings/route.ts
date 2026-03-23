@@ -23,6 +23,7 @@ export async function GET(request: Request) {
         leave_types: [{ name: "Casual Leave", quota: 10 }],
         weekend_policy: [0], // Default Sunday off
         specific_weekend_rules: [],
+        allow_multi_checkins: false,
       });
     }
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     await dbConnect();
     const body = await request.json();
 
-    const { year, leave_types, weekend_policy, specific_weekend_rules, holidays } = body;
+    const { year, leave_types, weekend_policy, specific_weekend_rules, holidays, allow_multi_checkins } = body;
     if (!year) {
       return NextResponse.json({ success: false, message: "Year is required" }, { status: 400 });
     }
@@ -70,12 +71,16 @@ export async function POST(request: Request) {
         leave_types: leave_types,
         weekend_policy,
         specific_weekend_rules,
+        allow_multi_checkins: allow_multi_checkins || false,
       });
       await settings.save();
     } else {
       settings.leave_types = leave_types;
       settings.weekend_policy = weekend_policy;
       settings.specific_weekend_rules = specific_weekend_rules;
+      if (allow_multi_checkins !== undefined) {
+        settings.allow_multi_checkins = allow_multi_checkins;
+      }
       await settings.save();
     }
 

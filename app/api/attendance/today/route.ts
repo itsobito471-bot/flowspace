@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/src/lib/auth";
 import dbConnect from "@/src/lib/mongodb";
 import { Attendance } from "@/src/lib/models/Attendance";
+import { CompanySettings } from "@/src/lib/models/Settings";
 import mongoose from "mongoose";
 
 // Helper to get normalized "today" date (midnight local time or UTC based, let's use UTC start of day)
@@ -51,7 +52,20 @@ export async function POST(request: Request) {
     if (action === "CHECK_IN") {
       let record = await Attendance.findOne({ user_id: userId, date: today });
       if (record && record.check_in) {
-        return NextResponse.json({ success: false, message: "Already checked in today." }, { status: 400 });
+        if (record.check_out === null) {
+          return NextResponse.json({ success: false, message: "Already currently checked in." }, { status: 400 });
+        } else {
+          // They checked out previously today
+          const settings = await CompanySettings.findOne({ year: today.getFullYear() }).lean();
+          if (!settings || !settings.allow_multi_checkins) {
+            return NextResponse.json({ success: false, message: "Already checked in today. Multiple check-ins are disabled." }, { status: 400 });
+          } else {
+            // Multiple check-ins allowed: Clear the check-out time so they are online again
+            record.check_out = null;
+            await record.save();
+            return NextResponse.json({ success: true, data: record });
+          }
+        }
       }
 
       if (!record) {
