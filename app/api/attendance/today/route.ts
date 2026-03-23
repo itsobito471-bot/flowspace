@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/src/lib/auth";
 import dbConnect from "@/src/lib/mongodb";
 import { Attendance } from "@/src/lib/models/Attendance";
+import { Leave } from "@/src/lib/models/Leave";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import mongoose from "mongoose";
 

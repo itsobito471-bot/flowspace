@@ -50,9 +50,16 @@ export async function PATCH(
     if (!leave) {
       return NextResponse.json({ success: false, message: "Leave not found." }, { status: 404 });
     }
-    if (leave.status !== "PENDING") {
+    if (leave.status === "REJECTED") {
       return NextResponse.json(
-        { success: false, message: "This request has already been actioned." },
+        { success: false, message: "This request has already been rejected." },
+        { status: 409 }
+      );
+    }
+    
+    if (leave.status === "APPROVED" && status === "APPROVED") {
+      return NextResponse.json(
+        { success: false, message: "This request is already approved." },
         { status: 409 }
       );
     }

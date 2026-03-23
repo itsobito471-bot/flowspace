@@ -559,21 +559,24 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject }: {
           <span className="ml-1.5 text-[10px] text-red-400 font-semibold">LOP</span>
         )}
       </td>
-      {isAdmin && leave.status === "PENDING" && (
+      {isAdmin && (leave.status === "PENDING" || leave.status === "APPROVED") ? (
         <td className="px-5 py-4">
           <div className="flex items-center gap-2">
-            <button onClick={onApprove}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold transition-all">
-              <Check size={11} /> Approve
-            </button>
+            {leave.status === "PENDING" && (
+              <button onClick={onApprove}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold transition-all">
+                <Check size={11} /> Approve
+              </button>
+            )}
             <button onClick={onReject}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[11px] font-bold transition-all">
-              <Ban size={11} /> Reject
+              <Ban size={11} /> {leave.status === "APPROVED" ? "Revoke" : "Reject"}
             </button>
           </div>
         </td>
+      ) : (
+        isAdmin && <td className="px-5 py-4" />
       )}
-      {isAdmin && leave.status !== "PENDING" && <td className="px-5 py-4" />}
     </motion.tr>
   );
 }

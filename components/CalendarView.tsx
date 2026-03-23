@@ -198,41 +198,43 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
                     {/* Hover vertical highlight */}
                     <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-                    {leaveRecord ? (
-                      <div className="absolute top-4 bottom-4 left-1 right-1 bg-violet-500/10 border border-violet-500/20 rounded-lg flex flex-col items-center justify-center p-2 text-center shadow-sm">
+                    {/* Leave Underlay */}
+                    {leaveRecord && (
+                      <div className="absolute inset-x-1 top-4 bottom-4 bg-violet-500/10 border border-violet-500/20 rounded-lg flex flex-col items-center justify-start pt-6 text-center shadow-sm z-0 pointer-events-none">
                         <span className="text-[10px] uppercase font-bold tracking-widest text-violet-400 mb-1">On Leave</span>
-                        <span className="text-xs font-semibold text-foreground/80">{leaveRecord.leave_type}</span>
+                        <span className="text-[10px] font-semibold text-foreground/80 truncate max-w-[90%]">{leaveRecord.leave_type}</span>
                       </div>
-                    ) : (
-                      dayRecords.map((record, i) => {
-                        if (!record.check_in) return null;
-                        const styles = getEventPositionStyles(record.check_in, record.check_out);
-                        if (styles.display === "none") return null;
-
-                        return (
-                          <div
-                            key={record._id + i}
-                            className="absolute border-l-2 border-cyan rounded-r-lg p-2 overflow-hidden shadow-sm transition-all hover:shadow-md cursor-pointer group/event bg-surface"
-                            style={{
-                              ...styles,
-                              left: `${4 + (i % 5) * 6}px`, // Cascade slightly to the right
-                              right: '4px',
-                              zIndex: 20 + i,
-                            }}
-                          >
-                            <div className="absolute inset-0 bg-cyan/10 group-hover:bg-cyan/15 transition-colors pointer-events-none" />
-                            <div className="text-[10px] font-bold text-cyan/90 leading-none mb-1 shadow-sm relative z-10 truncate">
-                              {formatTime(record.check_in)} - {record.check_out ? formatTime(record.check_out) : "Now"}
-                            </div>
-                            <div className="text-[10px] text-muted hidden md:block relative z-10 truncate">
-                              Dur: {record.check_out ? (
-                                (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) / 3600000
-                              ).toFixed(1) : "..."}h
-                            </div>
-                          </div>
-                        );
-                      })
                     )}
+
+                    {/* Attendance Blocks Overlay */}
+                    {dayRecords.map((record, i) => {
+                      if (!record.check_in) return null;
+                      const styles = getEventPositionStyles(record.check_in, record.check_out);
+                      if (styles.display === "none") return null;
+
+                      return (
+                        <div
+                          key={record._id + i}
+                          className="absolute border-l-2 border-cyan rounded-r-lg p-2 overflow-hidden shadow-sm transition-all hover:shadow-md cursor-pointer group/event bg-surface"
+                          style={{
+                            ...styles,
+                            left: `${4 + (i % 5) * 6}px`, // Cascade slightly to the right
+                            right: '4px',
+                            zIndex: 20 + i,
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-cyan/10 group-hover:bg-cyan/15 transition-colors pointer-events-none" />
+                          <div className="text-[10px] font-bold text-cyan/90 leading-none mb-1 shadow-sm relative z-10 truncate">
+                            {formatTime(record.check_in)} - {record.check_out ? formatTime(record.check_out) : "Now"}
+                          </div>
+                          <div className="text-[10px] text-muted hidden md:block relative z-10 truncate">
+                            Dur: {record.check_out ? (
+                              (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) / 3600000
+                            ).toFixed(1) : "..."}h
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
