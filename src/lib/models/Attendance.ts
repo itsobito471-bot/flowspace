@@ -27,8 +27,8 @@ const AttendanceSchema = new Schema<IAttendance>(
   { timestamps: true }
 );
 
-// Prevent a user from having two attendance records on the same day
-AttendanceSchema.index({ user_id: 1, date: 1 }, { unique: true });
+// Allow multiple attendance records per day (removed unique index)
+// AttendanceSchema.index({ user_id: 1, date: 1 }, { unique: true });
 
 if (mongoose.models.Attendance) {
   delete mongoose.models.Attendance;

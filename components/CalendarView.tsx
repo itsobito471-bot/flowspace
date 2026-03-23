@@ -212,13 +212,19 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
                         return (
                           <div
                             key={record._id + i}
-                            className="absolute left-1 right-1 bg-cyan/10 border-l-2 border-cyan rounded-r-lg p-2 overflow-hidden shadow-sm transition-all hover:bg-cyan/15 hover:shadow-md cursor-pointer z-20 group/event"
-                            style={styles}
+                            className="absolute border-l-2 border-cyan rounded-r-lg p-2 overflow-hidden shadow-sm transition-all hover:shadow-md cursor-pointer group/event bg-surface"
+                            style={{
+                              ...styles,
+                              left: `${4 + (i % 5) * 6}px`, // Cascade slightly to the right
+                              right: '4px',
+                              zIndex: 20 + i,
+                            }}
                           >
-                            <div className="text-[10px] font-bold text-cyan/90 leading-none mb-1 shadow-sm">
+                            <div className="absolute inset-0 bg-cyan/10 group-hover:bg-cyan/15 transition-colors pointer-events-none" />
+                            <div className="text-[10px] font-bold text-cyan/90 leading-none mb-1 shadow-sm relative z-10 truncate">
                               {formatTime(record.check_in)} - {record.check_out ? formatTime(record.check_out) : "Now"}
                             </div>
-                            <div className="text-[10px] text-muted hidden md:block">
+                            <div className="text-[10px] text-muted hidden md:block relative z-10 truncate">
                               Dur: {record.check_out ? (
                                 (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) / 3600000
                               ).toFixed(1) : "..."}h

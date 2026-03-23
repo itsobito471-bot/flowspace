@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
     const today = getTodayDate();
     const userIds = users.map(u => u._id);
-    const attendances = await Attendance.find({ date: today, user_id: { $in: userIds } }).lean();
+    const attendances = await Attendance.find({ date: today, user_id: { $in: userIds } }).sort({ check_in: -1 }).lean();
 
     const usersWithAttendance = users.map(u => {
       const record = attendances.find(a => String(a.user_id) === String(u._id));

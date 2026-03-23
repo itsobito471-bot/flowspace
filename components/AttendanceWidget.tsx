@@ -10,6 +10,7 @@ export default function AttendanceWidget() {
   const [actionLoading, setActionLoading] = useState(false);
   const [record, setRecord] = useState<any>(null);
   const [allowMultiCheckins, setAllowMultiCheckins] = useState<boolean>(false);
+  const [totalPreviousSeconds, setTotalPreviousSeconds] = useState<number>(0);
   const [liveDuration, setLiveDuration] = useState<number>(0);
   const [errorInfo, setErrorInfo] = useState<{title: string; message: string} | null>(null);
 
@@ -20,6 +21,7 @@ export default function AttendanceWidget() {
         if (json.success) {
           if (json.data) setRecord(json.data);
           if (json.allow_multi_checkins !== undefined) setAllowMultiCheckins(json.allow_multi_checkins);
+          if (json.total_previous_seconds !== undefined) setTotalPreviousSeconds(json.total_previous_seconds);
         }
       })
       .catch(() => {})
@@ -33,7 +35,8 @@ export default function AttendanceWidget() {
       
       const updateClock = () => {
         const now = Date.now();
-        setLiveDuration(Math.floor((now - checkInTime) / 1000));
+        const currentSessionSeconds = Math.floor((now - checkInTime) / 1000);
+        setLiveDuration(totalPreviousSeconds + currentSessionSeconds);
       };
       
       updateClock(); // Initial update
@@ -41,11 +44,14 @@ export default function AttendanceWidget() {
     } else if (record?.check_in && record?.check_out) {
       const checkInTime = new Date(record.check_in).getTime();
       const checkOutTime = new Date(record.check_out).getTime();
-      setLiveDuration(Math.floor((checkOutTime - checkInTime) / 1000));
+      const currentSessionSeconds = Math.floor((checkOutTime - checkInTime) / 1000);
+      setLiveDuration(totalPreviousSeconds + currentSessionSeconds);
+    } else {
+      setLiveDuration(totalPreviousSeconds);
     }
     
     return () => clearInterval(interval);
-  }, [record]);
+  }, [record, totalPreviousSeconds]);
 
   const formatTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600);
@@ -67,7 +73,8 @@ export default function AttendanceWidget() {
         setErrorInfo({ title: "Action Failed", message: json.message });
         return;
       }
-      setRecord(json.data);
+      if (json.data) setRecord(json.data);
+      if (json.total_previous_seconds !== undefined) setTotalPreviousSeconds(json.total_previous_seconds);
     } catch (e: any) {
       setErrorInfo({ title: "Network Error", message: "Failed to communicate with server." });
     } finally {

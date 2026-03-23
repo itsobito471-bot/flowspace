@@ -22,15 +22,27 @@ export async function GET(request: Request) {
 
     await dbConnect();
     const today = getTodayDate();
-    const record = await Attendance.findOne({
+    const allTodayRecords = await Attendance.find({
       user_id: (session.user as any).id,
       date: today,
-    }).lean();
+    }).sort({ check_in: 1 }).lean();
+
+    const record = allTodayRecords.length > 0 ? allTodayRecords[allTodayRecords.length - 1] : null;
+
+    let total_previous_seconds = 0;
+    if (allTodayRecords.length > 1) {
+      for (let i = 0; i < allTodayRecords.length - 1; i++) {
+        const r = allTodayRecords[i];
+        if (r.check_in && r.check_out) {
+          total_previous_seconds += Math.floor((new Date(r.check_out).getTime() - new Date(r.check_in).getTime()) / 1000);
+        }
+      }
+    }
 
     const settings = await CompanySettings.findOne({ year: today.getFullYear() }).lean();
     const allow_multi_checkins = settings?.allow_multi_checkins || false;
 
-    return NextResponse.json({ success: true, data: record, allow_multi_checkins });
+    return NextResponse.json({ success: true, data: record, allow_multi_checkins, total_previous_seconds });
   } catch (error: any) {
     console.error("GET Attendance Error:", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
@@ -53,7 +65,7 @@ export async function POST(request: Request) {
     const now = new Date();
 
     if (action === "CHECK_IN") {
-      let record = await Attendance.findOne({ user_id: userId, date: today });
+      let record = await Attendance.findOne({ user_id: userId, date: today }).sort({ check_in: -1 });
       if (record && record.check_in) {
         if (record.check_out === null) {
           return NextResponse.json({ success: false, message: "Already currently checked in." }, { status: 400 });
@@ -63,10 +75,27 @@ export async function POST(request: Request) {
           if (!settings || !settings.allow_multi_checkins) {
             return NextResponse.json({ success: false, message: "Already checked in today. Multiple check-ins are disabled." }, { status: 400 });
           } else {
-            // Multiple check-ins allowed: Clear the check-out time so they are online again
-            record.check_out = null;
-            await record.save();
-            return NextResponse.json({ success: true, data: record });
+            // Multiple check-ins allowed: Create a NEW attendance record for the new session
+            const newRecord = await Attendance.create({
+              user_id: userId,
+              date: today,
+              check_in: now,
+              status: "PRESENT",
+            });
+            
+            // Re-calculate total_previous_seconds so the frontend has up-to-date data after POST
+            const allTodayRecords = await Attendance.find({ user_id: userId, date: today }).sort({ check_in: 1 }).lean();
+            let total_previous_seconds = 0;
+            if (allTodayRecords.length > 1) {
+              for (let i = 0; i < allTodayRecords.length - 1; i++) {
+                const r = allTodayRecords[i];
+                if (r.check_in && r.check_out) {
+                  total_previous_seconds += Math.floor((new Date(r.check_out).getTime() - new Date(r.check_in).getTime()) / 1000);
+                }
+              }
+            }
+
+            return NextResponse.json({ success: true, data: newRecord, total_previous_seconds });
           }
         }
       }
@@ -85,7 +114,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, data: record });
 
     } else if (action === "CHECK_OUT") {
-      const record = await Attendance.findOne({ user_id: userId, date: today });
+      const record = await Attendance.findOne({ user_id: userId, date: today }).sort({ check_in: -1 });
       if (!record || !record.check_in) {
         return NextResponse.json({ success: false, message: "Cannot check out without checking in." }, { status: 400 });
       }

@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
     // Get today's attendance logs only for the current page's users
     const userIds = users.map(u => u._id);
-    const attendances = await Attendance.find({ date: today, user_id: { $in: userIds } }).lean();
+    const attendances = await Attendance.find({ date: today, user_id: { $in: userIds } }).sort({ check_in: -1 }).lean();
 
     const teamStatus = users.map(user => {
       const record = attendances.find(a => String(a.user_id) === String(user._id));
