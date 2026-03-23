@@ -4,6 +4,8 @@ import { authOptions } from "@/src/lib/auth";
 import dbConnect from "@/src/lib/mongodb";
 import { Attendance } from "@/src/lib/models/Attendance";
 import { Leave } from "@/src/lib/models/Leave";
+import { CompanySettings } from "@/src/lib/models/Settings";
+import { Holiday } from "@/src/lib/models/Holiday";
 
 // GET: Fetch attendance and approved leaves within a date range
 export async function GET(request: Request) {
@@ -62,11 +64,60 @@ export async function GET(request: Request) {
       ]
     }).lean();
 
+    // 3. Fetch Settings and Holidays to inject weekends/holidays if no attendance exists
+    const currentYear = start.getFullYear();
+    const settings = await CompanySettings.findOne({ year: currentYear }).lean();
+    const weekends = (settings as any)?.weekend_policy || [0]; // default Sunday
+    
+    const holidays = await Holiday.find({
+      date: { $gte: start, $lte: end }
+    }).lean();
+
+    // Generate dummy leaves for weekends and holidays
+    const finalLeaves = [...leaves];
+    const currentDate = new Date(start);
+    
+    // Create a map to easily check if attendance exists on a specific day string
+    const attendanceMap = new Set(
+      attendanceRecords.map(r => new Date(r.date).toISOString().split('T')[0])
+    );
+
+    while (currentDate <= end) {
+      const dayStr = currentDate.toISOString().split('T')[0];
+      
+      // If user has not checked in on this day
+      if (!attendanceMap.has(dayStr)) {
+        // Is it a holiday?
+        const holidayMatch = holidays.find(h => new Date(h.date).toISOString().split('T')[0] === dayStr);
+        if (holidayMatch) {
+          finalLeaves.push({
+            _id: holidayMatch._id.toString(),
+            start_date: new Date(currentDate),
+            end_date: new Date(currentDate),
+            leave_type: holidayMatch.title,
+            status: "APPROVED"
+          } as any);
+        }  
+        // Else Is it a weekend?
+        else if (weekends.includes(currentDate.getDay())) {
+          finalLeaves.push({
+            _id: `weekend-${dayStr}`,
+            start_date: new Date(currentDate),
+            end_date: new Date(currentDate),
+            leave_type: "Weekend",
+            status: "APPROVED"
+          } as any);
+        }
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         attendance: attendanceRecords,
-        leaves: leaves,
+        leaves: finalLeaves,
       }
     });
 

@@ -7,6 +7,8 @@ export interface IAttendance extends Document {
   check_in: Date | null;
   check_out: Date | null;
   status: "PRESENT" | "ABSENT" | "HALF_DAY";
+  added_by: mongoose.Types.ObjectId | null;
+  description: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +25,8 @@ const AttendanceSchema = new Schema<IAttendance>(
       required: true,
       default: "PRESENT",
     },
+    added_by: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    description: { type: String, default: null },
   },
   { timestamps: true }
 );

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ChevronLeft, Loader2, Calendar as CalendarIcon, FileText, CheckSquare, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CalendarView from "@/components/CalendarView";
 import Link from "next/link";
+import { format } from "date-fns";
 
 interface EmployeeDetails {
   _id: string;
@@ -96,6 +97,188 @@ function EmployeeLeavesTab({ employeeId }: { employeeId: string }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Add Manual Time Modal
+// ─────────────────────────────────────────────────────────────────────────────
+function AddManualTimeModal({ open, onClose, employeeId, onCreated }: {
+  open: boolean;
+  onClose: () => void;
+  employeeId: string;
+  onCreated: () => void;
+}) {
+  const [form, setForm] = useState({ date: "", check_in: "", check_out: "", description: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setForm({ date: format(new Date(), "yyyy-MM-dd"), check_in: "", check_out: "", description: "" });
+      setError(null);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    // Combine date and time
+    const checkInDate = new Date(`${form.date}T${form.check_in}`);
+    let checkOutDate = null;
+    if (form.check_out) {
+      checkOutDate = new Date(`${form.date}T${form.check_out}`);
+    }
+
+    try {
+      const res = await fetch("/api/attendance/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: employeeId,
+          date: form.date,
+          check_in: checkInDate.toISOString(),
+          check_out: checkOutDate ? checkOutDate.toISOString() : null,
+          description: form.description
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.message);
+      } else {
+        onCreated();
+        onClose();
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const inputCls =
+    "w-full bg-background border border-muted/10 rounded-xl px-3.5 py-2.5 text-sm text-foreground " +
+    "placeholder:text-muted/40 focus:outline-none focus:border-cyan/40 transition-all";
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 py-10 overflow-y-auto pointer-events-none">
+        <div className="pointer-events-auto w-full max-w-md bg-surface border border-muted/10 rounded-2xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+          <h2 className="text-lg font-bold mb-1">Add Manual Time</h2>
+          <p className="text-xs text-muted mb-6">Manually log hours for this employee.</p>
+          
+          {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl mb-4">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80 block mb-1.5">Date</label>
+              <input type="date" required value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={inputCls} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80 block mb-1.5">Check In</label>
+                <input type="time" required value={form.check_in} onChange={e => setForm({ ...form, check_in: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80 block mb-1.5">Check Out</label>
+                <input type="time" value={form.check_out} onChange={e => setForm({ ...form, check_out: e.target.value })} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80 block mb-1.5">Description / Reason</label>
+              <textarea placeholder="e.g. Worked late on weekend project..." required rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className={inputCls + " resize-none"} />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 transition-all">Cancel</button>
+              <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-foreground text-background hover:bg-foreground/90 transition-all flex justify-center items-center">
+                {loading ? <Loader2 size={16} className="animate-spin" /> : "Save Time"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AttendanceLogTab({ employeeId }: { employeeId: string }) {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchLogs = useCallback(() => {
+    fetch(`/api/attendance/log?userId=${employeeId}&limit=50`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setLogs(json.data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [employeeId]);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-cyan" /></div>;
+
+  if (logs.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
+      <Clock size={32} strokeWidth={1.2} />
+      <p className="text-sm">No attendance records found.</p>
+    </div>
+  );
+
+  return (
+    <div className="bg-surface border border-muted/10 rounded-2xl overflow-hidden mt-4">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[650px]">
+          <thead>
+            <tr className="border-b border-muted/10 bg-muted/5">
+              <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Date</th>
+              <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Check In / Out</th>
+              <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Status / Added By</th>
+              <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70 max-w-[200px]">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map((log) => {
+              const dateStr = format(new Date(log.date), "MMM d, yyyy (EEE)");
+              const inStr = log.check_in ? format(new Date(log.check_in), "HH:mm") : "--:--";
+              const outStr = log.check_out ? format(new Date(log.check_out), "HH:mm") : "--:--";
+              const isManual = !!log.added_by;
+
+              return (
+                <tr key={log._id} className="border-b border-muted/10 hover:bg-muted/5 transition-colors">
+                  <td className="px-5 py-4 font-semibold text-sm">
+                    {dateStr}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="text-sm text-foreground">{inStr} <span className="text-muted">–</span> {outStr}</span>
+                    <p className="text-[10px] text-muted font-mono mt-0.5">
+                      {log.check_in && log.check_out ? `${((new Date(log.check_out).getTime() - new Date(log.check_in).getTime()) / 3600000).toFixed(1)} hrs` : "-"}
+                    </p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-cyan/10 border border-cyan/20 text-cyan">{log.status}</span>
+                      {isManual && (
+                        <span className="text-[10px] text-muted/80 bg-muted/10 px-1.5 py-0.5 rounded">added by Admin</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 max-w-[200px]">
+                    <p className="text-xs text-foreground/80 leading-relaxed line-clamp-2" title={log.description}>{log.description || <span className="text-muted/50 italic">Standard API Check-in</span>}</p>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function EmployeeProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -104,7 +287,11 @@ export default function EmployeeProfilePage() {
 
   const [employee, setEmployee] = useState<EmployeeDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"CALENDAR" | "LEAVES" | "TASKS">("CALENDAR");
+  const [activeTab, setActiveTab] = useState<"CALENDAR" | "LOGS" | "LEAVES" | "TASKS">("CALENDAR");
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // to reload child components after manual add
+
+  const isAdmin = (session?.user as any)?.role?.level === "ADMIN";
 
   useEffect(() => {
     // Fetch this user from the main team list to get their role info
@@ -150,38 +337,62 @@ export default function EmployeeProfilePage() {
               <p className="text-muted text-sm font-medium">{employee.role_id?.title || "No Role"} · {employee.role_id?.department || "No Department"}</p>
             </div>
           </div>
+          {isAdmin && (
+            <button onClick={() => setManualModalOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-foreground text-background text-xs font-bold rounded-lg hover:bg-foreground/90 transition-all shadow-sm">
+              <Clock size={13} /> Add Manual Time
+            </button>
+          )}
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-6 mt-2">
+        <div className="flex items-center gap-6 mt-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab("CALENDAR")}
-            className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${activeTab === "CALENDAR" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
+            className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 shrink-0 ${activeTab === "CALENDAR" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
           >
-            <div className="flex items-center gap-2"><CalendarIcon size={16} /> Attendance</div>
+            <div className="flex items-center gap-2"><CalendarIcon size={16} /> Dashboard</div>
+          </button>
+          <button
+            onClick={() => setActiveTab("LOGS")}
+            className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 shrink-0 ${activeTab === "LOGS" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
+          >
+            <div className="flex items-center gap-2"><Clock size={16} /> Attendance Logs</div>
           </button>
           <button
             onClick={() => setActiveTab("LEAVES")}
-            className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${activeTab === "LEAVES" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
+            className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 shrink-0 ${activeTab === "LEAVES" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
           >
             <div className="flex items-center gap-2"><FileText size={16} /> Leaves</div>
           </button>
           <button
             onClick={() => setActiveTab("TASKS")}
-            className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${activeTab === "TASKS" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
+            className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 shrink-0 ${activeTab === "TASKS" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
           >
             <div className="flex items-center gap-2"><CheckSquare size={16} /> Tasks</div>
           </button>
         </div>
       </div>
 
+      <AddManualTimeModal 
+        open={manualModalOpen} 
+        onClose={() => setManualModalOpen(false)} 
+        employeeId={employee._id} 
+        onCreated={() => setRefreshKey(k => k + 1)} 
+      />
+
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-surface/30">
         <AnimatePresence mode="wait">
           {activeTab === "CALENDAR" && (
-            <motion.div key="cal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full">
+            <motion.div key={`cal-${refreshKey}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full">
               {/* Reuse CalendarView */}
               <CalendarView employeeId={employee._id} />
+            </motion.div>
+          )}
+
+          {activeTab === "LOGS" && (
+            <motion.div key={`logs-${refreshKey}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full">
+              <AttendanceLogTab employeeId={employee._id} />
             </motion.div>
           )}
 
