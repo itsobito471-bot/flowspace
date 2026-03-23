@@ -16,6 +16,8 @@ interface AttendanceData {
   check_in: string | null;
   check_out: string | null;
   status: string;
+  description?: string;
+  added_by?: string;
 }
 
 interface LeaveData {
@@ -39,6 +41,7 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
   // State: Dates
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [miniCalMonth, setMiniCalMonth] = useState(new Date());
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceData | null>(null);
 
   // Derived Grid Dates
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 0 }), [currentWeek]);
@@ -211,26 +214,36 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
                       if (!record.check_in) return null;
                       const styles = getEventPositionStyles(record.check_in, record.check_out);
                       if (styles.display === "none") return null;
+                      
+                      const isManual = !!record.added_by;
+                      const borderColor = isManual ? "border-amber-500" : "border-cyan";
+                      const bgHover = isManual ? "bg-amber-500/10 group-hover:bg-amber-500/15" : "bg-cyan/10 group-hover:bg-cyan/15";
+                      const textColor = isManual ? "text-amber-500/90" : "text-cyan/90";
 
                       return (
                         <div
                           key={record._id + i}
-                          className="absolute border-l-2 border-cyan rounded-r-lg p-2 overflow-hidden shadow-sm transition-all hover:shadow-md cursor-pointer group/event bg-surface"
+                          onClick={() => setSelectedRecord(record)}
+                          className={`absolute border-l-2 ${borderColor} rounded-r-lg p-2 overflow-hidden shadow-sm transition-all hover:shadow-md cursor-pointer group/event bg-surface`}
                           style={{
                             ...styles,
                             left: `${4 + (i % 5) * 6}px`, // Cascade slightly to the right
                             right: '4px',
                             zIndex: 20 + i,
                           }}
+                          title={isManual ? `Added by Admin: ${record.description || 'Manual entry'}` : "Regular Attendance"}
                         >
-                          <div className="absolute inset-0 bg-cyan/10 group-hover:bg-cyan/15 transition-colors pointer-events-none" />
-                          <div className="text-[10px] font-bold text-cyan/90 leading-none mb-1 shadow-sm relative z-10 truncate">
+                          <div className={`absolute inset-0 ${bgHover} transition-colors pointer-events-none`} />
+                          <div className={`text-[10px] font-bold ${textColor} leading-none mb-1 shadow-sm relative z-10 truncate`}>
                             {formatTime(record.check_in)} - {record.check_out ? formatTime(record.check_out) : "Now"}
                           </div>
-                          <div className="text-[10px] text-muted hidden md:block relative z-10 truncate">
-                            Dur: {record.check_out ? (
+                          <div className="text-[10px] text-muted hidden md:flex flex-col relative z-10">
+                            <span className="truncate">Dur: {record.check_out ? (
                               (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) / 3600000
-                            ).toFixed(1) : "..."}h
+                            ).toFixed(1) : "..."}h</span>
+                            {isManual && record.description && (
+                              <span className="truncate text-amber-500/70 mt-0.5">{record.description}</span>
+                            )}
                           </div>
                         </div>
                       );
@@ -286,6 +299,10 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
               <span className="text-xs font-medium text-muted">Attendance Block</span>
             </div>
             <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/40" />
+              <span className="text-xs font-medium text-muted">Manual Time</span>
+            </div>
+            <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded bg-violet-500/20 border border-violet-500/40" />
               <span className="text-xs font-medium text-muted">Approved Leave</span>
             </div>
@@ -293,6 +310,74 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
         </div>
 
       </div>
+
+      {/* Modal for Event Details */}
+      {selectedRecord && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+          onClick={() => setSelectedRecord(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-sm bg-surface border border-muted/20 rounded-2xl p-6 shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedRecord(null)}
+              className="absolute top-4 right-4 text-muted hover:text-foreground transition-colors"
+            >
+              ✕
+            </button>
+            <h3 className="text-lg font-bold mb-4 border-b border-muted/10 pb-2">
+              {!!selectedRecord.added_by ? "Manual Time Entry" : "Attendance Details"}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <span className="text-xs font-semibold text-muted uppercase tracking-wider">Date</span>
+                <p className="font-medium">{format(new Date(selectedRecord.date), "EEEE, MMMM d, yyyy")}</p>
+              </div>
+              
+              <div className="flex justify-between items-center bg-muted/5 p-3 rounded-lg border border-muted/10">
+                <div>
+                  <span className="text-xs font-semibold text-muted uppercase tracking-wider">Check In</span>
+                  <p className="font-bold text-cyan text-lg">{selectedRecord.check_in ? formatTime(selectedRecord.check_in) : "--:--"}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-semibold text-muted uppercase tracking-wider">Check Out</span>
+                  <p className="font-bold text-cyan text-lg">{selectedRecord.check_out ? formatTime(selectedRecord.check_out) : "--:--"}</p>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-semibold text-muted uppercase tracking-wider">Duration</span>
+                <p className="font-medium">
+                  {selectedRecord.check_out && selectedRecord.check_in
+                    ? `${((new Date(selectedRecord.check_out).getTime() - new Date(selectedRecord.check_in).getTime()) / 3600000).toFixed(2)} Hours`
+                    : "In Progress"}
+                </p>
+              </div>
+
+              {!!selectedRecord.added_by && selectedRecord.description && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mt-2">
+                  <span className="text-xs font-semibold text-amber-500/70 uppercase tracking-wider">Admin Note</span>
+                  <p className="text-sm mt-1">{selectedRecord.description}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-muted/10 flex justify-end">
+              <button
+                onClick={() => setSelectedRecord(null)}
+                className="px-5 py-2.5 bg-muted/10 hover:bg-muted/20 text-foreground font-semibold rounded-xl transition-all text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 }
