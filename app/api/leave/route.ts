@@ -33,8 +33,19 @@ export async function GET(request: Request) {
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
     const skip = (page - 1) * limit;
     const statusFilter = searchParams.get("status");
+    const targetUserId = searchParams.get("userId");
 
-    const query: Record<string, any> = isAdmin ? {} : { user_id: userId };
+    const query: Record<string, any> = {};
+    
+    if (!isAdmin) {
+      if (targetUserId && targetUserId !== userId) {
+        return NextResponse.json({ success: false, message: "Unauthorized to view these leaves" }, { status: 403 });
+      }
+      query.user_id = userId; // Non-admins can only see their own leaves
+    } else if (targetUserId) {
+      query.user_id = targetUserId; // Admins can filter by specific user
+    }
+
     if (statusFilter && ["PENDING", "APPROVED", "REJECTED"].includes(statusFilter)) {
       query.status = statusFilter;
     }

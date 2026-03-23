@@ -53,7 +53,7 @@ const NAV_ITEMS: NavItem[] = [
    * The "Admin Panel" item is flagged adminOnly: true.
    * It will only be rendered when userRole === "ADMIN".
    */
-  { name: "Admin Panel", href: "/admin", icon: ShieldAlert, adminOnly: true },
+  // { name: "Admin Panel", href: "/admin", icon: ShieldAlert, adminOnly: true },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -121,10 +121,9 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
                   transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all
                     ${collapsed ? "justify-center" : ""}
-                    ${
-                      isActive
-                        ? "bg-cyan/10 text-cyan border border-cyan/20"
-                        : "text-muted hover:text-foreground hover:bg-muted/10 border border-transparent"
+                    ${isActive
+                      ? "bg-cyan/10 text-cyan border border-cyan/20"
+                      : "text-muted hover:text-foreground hover:bg-muted/10 border border-transparent"
                     }`}
                 >
                   <item.icon
@@ -134,9 +133,8 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
                   />
                   {!collapsed && (
                     <span
-                      className={`text-sm font-semibold tracking-tight truncate ${
-                        isActive ? "text-cyan" : ""
-                      }`}
+                      className={`text-sm font-semibold tracking-tight truncate ${isActive ? "text-cyan" : ""
+                        }`}
                     >
                       {item.name}
                     </span>
@@ -180,9 +178,8 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
         {userRole === "ADMIN" && (
           <Link href="/settings">
             <div
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-foreground hover:bg-muted/10 ${
-                collapsed ? "justify-center" : ""
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-foreground hover:bg-muted/10 ${collapsed ? "justify-center" : ""
+                }`}
             >
               <Settings size={18} strokeWidth={1.8} />
               {!collapsed && (
@@ -195,9 +192,8 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
         {/* Profile Settings */}
         <Link href="/profile">
           <div
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-cyan hover:bg-cyan/10 border border-transparent hover:border-cyan/20 ${
-              collapsed ? "justify-center" : ""
-            }`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-muted hover:text-cyan hover:bg-cyan/10 border border-transparent hover:border-cyan/20 ${collapsed ? "justify-center" : ""
+              }`}
           >
             <User size={18} strokeWidth={1.8} />
             {!collapsed && (
@@ -210,9 +206,8 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all 
-            text-red-500/70 hover:text-red-500 hover:bg-red-500/10 ${
-            collapsed ? "justify-center" : ""
-          }`}
+            text-red-500/70 hover:text-red-500 hover:bg-red-500/10 ${collapsed ? "justify-center" : ""
+            }`}
         >
           <LogOut size={18} strokeWidth={1.8} />
           {!collapsed && (
@@ -244,9 +239,8 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
           return (
             <Link key={item.name} href={item.href}>
               <div
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${
-                  isActive ? "text-cyan" : "text-muted"
-                }`}
+                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${isActive ? "text-cyan" : "text-muted"
+                  }`}
               >
                 <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
                 <span className="text-[9px] font-bold tracking-wide">{item.name}</span>
@@ -306,11 +300,10 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
                   return (
                     <Link key={item.name} href={item.href} onClick={() => setOpen(false)}>
                       <div
-                        className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${
-                          isActive
+                        className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${isActive
                             ? "bg-cyan/10 text-cyan border-cyan/20"
                             : "text-muted hover:text-foreground hover:bg-muted/10 border-transparent"
-                        }`}
+                          }`}
                       >
                         <item.icon size={18} strokeWidth={isActive ? 2.5 : 1.8} />
                         <span className="text-sm font-semibold">{item.name}</span>
@@ -336,7 +329,7 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
                     <span className="text-sm font-semibold">My Profile</span>
                   </div>
                 </Link>
-                
+
                 <button
                   onClick={() => signOut({ callbackUrl: "/" })}
                   className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-500/70 hover:text-red-500 hover:bg-red-500/10 transition-all"

@@ -27,7 +27,10 @@ export async function GET(request: Request) {
       date: today,
     }).lean();
 
-    return NextResponse.json({ success: true, data: record });
+    const settings = await CompanySettings.findOne({ year: today.getFullYear() }).lean();
+    const allow_multi_checkins = settings?.allow_multi_checkins || false;
+
+    return NextResponse.json({ success: true, data: record, allow_multi_checkins });
   } catch (error: any) {
     console.error("GET Attendance Error:", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });

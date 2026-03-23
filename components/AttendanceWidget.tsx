@@ -9,6 +9,7 @@ export default function AttendanceWidget() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [record, setRecord] = useState<any>(null);
+  const [allowMultiCheckins, setAllowMultiCheckins] = useState<boolean>(false);
   const [liveDuration, setLiveDuration] = useState<number>(0);
   const [errorInfo, setErrorInfo] = useState<{title: string; message: string} | null>(null);
 
@@ -16,8 +17,9 @@ export default function AttendanceWidget() {
     fetch("/api/attendance/today")
       .then((res) => res.json())
       .then((json) => {
-        if (json.success && json.data) {
-          setRecord(json.data);
+        if (json.success) {
+          if (json.data) setRecord(json.data);
+          if (json.allow_multi_checkins !== undefined) setAllowMultiCheckins(json.allow_multi_checkins);
         }
       })
       .catch(() => {})
@@ -140,13 +142,13 @@ export default function AttendanceWidget() {
         </div>
 
         <div className="relative z-10 w-full space-y-2">
-          {!record?.check_in && (
+          {(!record?.check_in || (isCheckedOut && allowMultiCheckins)) && (
             <button
               onClick={() => handleAction("CHECK_IN")}
               disabled={actionLoading}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-background bg-foreground hover:bg-muted-foreground disabled:opacity-50 transition-all shadow-md"
             >
-              {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <><LogIn size={16} /> Punch In</>}
+              {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <><LogIn size={16} /> {isCheckedOut ? "Punch In Again" : "Punch In"}</>}
             </button>
           )}
 
@@ -160,7 +162,7 @@ export default function AttendanceWidget() {
             </button>
           )}
 
-          {isCheckedOut && (
+          {isCheckedOut && !allowMultiCheckins && (
             <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 shadow-inner">
               <CheckCircle2 size={16} /> Verified Shift
             </div>

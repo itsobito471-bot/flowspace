@@ -223,7 +223,7 @@ function AddEmployeeModal({ open, onClose, onCreated }: {
                 </div>
                 <div className="flex gap-3 px-6 py-4 border-t border-muted/10">
                   <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 hover:text-foreground transition-all">Cancel</button>
-                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
                     {submitting ? <><Loader2 size={14} className="animate-spin" />Creating…</> : "Create Employee"}
                   </button>
                 </div>
@@ -354,7 +354,7 @@ function CreateRoleModal({ open, onClose, onCreated }: {
 
                 <div className="flex gap-3 px-6 py-4 border-t border-muted/10">
                   <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 hover:text-foreground transition-all">Cancel</button>
-                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                  <button type="submit" disabled={submitting || success} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
                     {submitting ? <><Loader2 size={14} className="animate-spin" />Creating…</> : "Create Role"}
                   </button>
                 </div>
@@ -704,12 +704,12 @@ export default function TeamPage() {
           {/* CTAs — contextual per tab */}
           {tab === "members" ? (
             <button id="add-employee-btn" onClick={() => setEmpModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black text-sm font-bold tracking-tight hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
               <UserPlus size={15} strokeWidth={2.5} />Add Employee
             </button>
           ) : (
             <button id="create-role-btn" onClick={() => setRoleModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black text-sm font-bold tracking-tight hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
               <Plus size={15} strokeWidth={2.5} />Create Role
             </button>
           )}
