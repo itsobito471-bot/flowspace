@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import {
   Users,
   UserPlus,
@@ -453,6 +454,7 @@ function MemberRow({ member, index, onEdit, onDelete }: { member: TeamMember; in
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Link href={`/team/${member._id}`} className="text-muted hover:text-cyan p-1.5 transition-colors"><Eye size={15} /></Link>
           <button onClick={onEdit} className="text-muted hover:text-cyan p-1.5 transition-colors"><Pencil size={15} /></button>
           <button onClick={onDelete} className="text-muted hover:text-red-500 p-1.5 transition-colors"><Trash2 size={15} /></button>
         </div>

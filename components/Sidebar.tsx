@@ -7,6 +7,7 @@ import {
   Users,
   CheckSquare,
   Calendar,
+  CalendarDays,
   BarChart2,
   Settings,
   LogOut,
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: "Dashboard", href: "/home", icon: LayoutDashboard },
   { name: "Team", href: "/team", icon: Users },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
+  { name: "Calendar", href: "/calendar", icon: CalendarDays },
   { name: "Leave Requests", href: "/leave", icon: Calendar },
   { name: "Reports", href: "/reports", icon: BarChart2 },
   /**
