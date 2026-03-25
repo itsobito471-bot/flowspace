@@ -4,8 +4,10 @@ export interface IHoliday extends Document {
   title: string;
   date: Date;
   type: "PUBLIC" | "PROVISIONAL" | "OPTIONAL";
+  organization_id: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+
 }
 
 const HolidaySchema = new Schema<IHoliday>(
@@ -16,10 +18,12 @@ const HolidaySchema = new Schema<IHoliday>(
      * date-equality comparisons rather than range queries.
      */
     date: { type: Date, required: true, unique: true },
-    type: { 
-      type: String, 
-      enum: ["PUBLIC", "PROVISIONAL", "OPTIONAL"], 
-      default: "PUBLIC" 
+    organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
+    type: {
+
+      type: String,
+      enum: ["PUBLIC", "PROVISIONAL", "OPTIONAL"],
+      default: "PUBLIC"
     },
   },
   { timestamps: true }

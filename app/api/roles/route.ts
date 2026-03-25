@@ -12,6 +12,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     await dbConnect();
 
     const { searchParams } = new URL(request.url);
@@ -20,8 +25,8 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     const [roles, totalCount] = await Promise.all([
-      Role.find({}).sort({ level: -1 }).skip(skip).limit(limit).lean().exec(),
-      Role.countDocuments({}),
+      Role.find({ organization_id: orgId }).sort({ level: -1 }).skip(skip).limit(limit).lean().exec(),
+      Role.countDocuments({ organization_id: orgId }),
     ]);
 
     return NextResponse.json({
@@ -55,6 +60,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Forbidden: Only Admins can create roles." }, { status: 403 });
     }
 
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     await dbConnect();
 
     const body = await request.json();
@@ -78,6 +88,7 @@ export async function POST(request: Request) {
       title: title.trim(),
       department: department.trim(),
       level,
+      organization_id: orgId,
     });
 
     return NextResponse.json(

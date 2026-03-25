@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       status: "PRESENT",
       added_by: (session.user as any).id,
       description: description.trim(),
+      organization_id: orgId,
     });
 
     return NextResponse.json({ success: true, data: newRecord, message: "Manual time entry added successfully." });

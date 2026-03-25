@@ -85,6 +85,7 @@ export async function POST(request: Request) {
         work_end_time: work_end_time || "18:00",                 // NEW
         is_overtime_applicable: is_overtime_applicable || false, // NEW
         overtime_hourly_rate: overtime_hourly_rate || 0,         // NEW
+        organization_id: (session?.user as any)?.orgId,
       });
       await settings.save();
     } else {
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
       if (allow_multi_checkins !== undefined) {
         settings.allow_multi_checkins = allow_multi_checkins;
       }
-
+      settings.organization_id = (session?.user as any)?.orgId;
       if (work_start_time !== undefined) settings.work_start_time = work_start_time;
       if (work_end_time !== undefined) settings.work_end_time = work_end_time;
       if (is_overtime_applicable !== undefined) settings.is_overtime_applicable = is_overtime_applicable;
@@ -104,11 +105,13 @@ export async function POST(request: Request) {
 
     // 2. Overwrite Public Holidays for the Year
     if (Array.isArray(holidays)) {
+      const orgId = (session?.user as any)?.orgId;
       const startOfYear = new Date(Date.UTC(year, 0, 1));
       const endOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
 
-      // Remove all existing holidays in this year
+      // Remove only this org's existing holidays for this year
       await Holiday.deleteMany({
+        organization_id: orgId,
         date: { $gte: startOfYear, $lte: endOfYear }
       });
 
@@ -121,7 +124,8 @@ export async function POST(request: Request) {
           return {
             title: h.title,
             date: d,
-            type: h.type || "PUBLIC"
+            type: h.type || "PUBLIC",
+            organization_id: orgId,
           };
         });
         await Holiday.insertMany(holidayDocs);

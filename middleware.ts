@@ -8,7 +8,7 @@ export default withAuth(
 
     // Super-admin routes: only userType === "super_admin" allowed
     if (pathname.startsWith("/api/super-admin") || pathname.startsWith("/(super-admin)")) {
-      if (token?.userType !== "super_admin") {
+      if (token?.userType !== "SUPER_ADMIN") {
         return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
       }
     }

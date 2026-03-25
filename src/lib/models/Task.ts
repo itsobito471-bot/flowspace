@@ -8,6 +8,7 @@ export interface ITask extends Document {
   tracked_time: number;
   createdAt: Date;
   updatedAt: Date;
+  organization_id: mongoose.Types.ObjectId;
 }
 
 const TaskSchema = new Schema<ITask>(
@@ -15,6 +16,7 @@ const TaskSchema = new Schema<ITask>(
     space_id: { type: Schema.Types.ObjectId, ref: "Space", required: true },
     title: { type: String, required: true },
     assigned_to: { type: Schema.Types.ObjectId, ref: "User", required: false },
+    organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
     status: {
       type: String,
       enum: ["TODO", "IN_PROGRESS", "DONE"],

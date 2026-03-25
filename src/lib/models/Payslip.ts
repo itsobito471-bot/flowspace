@@ -8,6 +8,7 @@ export interface IPayslip extends Document {
   additions: { title: string; amount: number }[];
   deductions: { title: string; amount: number }[];
   net_pay: number;
+  organization_id: mongoose.Types.ObjectId;
   status: "DRAFT" | "PAID" | "PUBLISHED";
   createdAt: Date;
   updatedAt: Date;
@@ -19,6 +20,7 @@ const PayslipSchema = new Schema<IPayslip>(
     month: { type: Number, required: true, min: 1, max: 12 },
     year: { type: Number, required: true },
     base_salary: { type: Number, required: true },
+    organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
     additions: [
       {
         title: { type: String, required: true },

@@ -7,6 +7,7 @@ export interface ILeave extends Document {
   reason: string;
   leave_type: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  organization_id: mongoose.Types.ObjectId;
   is_loss_of_pay: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -19,6 +20,7 @@ const LeaveSchema = new Schema<ILeave>(
     end_date: { type: Date, required: true },
     reason: { type: String, required: true },
     leave_type: { type: String, required: true },
+    organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
     status: {
       type: String,
       enum: ["PENDING", "APPROVED", "REJECTED"],

@@ -18,7 +18,7 @@ export interface ICompanySettings extends Document {
   work_end_time: string;
   is_overtime_applicable: boolean;
   overtime_hourly_rate: number;
-
+  organization_id: mongoose.Types.ObjectId;
 
   createdAt: Date;
   updatedAt: Date;
@@ -53,6 +53,7 @@ const CompanySettingsSchema = new Schema<ICompanySettings>(
     work_end_time: { type: String, default: "18:00" },
     is_overtime_applicable: { type: Boolean, default: false },
     overtime_hourly_rate: { type: Number, default: 0 },
+    organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
   },
   { timestamps: true }
 );

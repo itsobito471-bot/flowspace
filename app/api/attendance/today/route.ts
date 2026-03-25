@@ -62,6 +62,7 @@ export async function POST(request: Request) {
     const { action } = body; // "CHECK_IN" | "CHECK_OUT"
 
     const userId = (session.user as any).id;
+    const orgId = session.user.orgId;
     const today = getTodayDate();
     const now = new Date();
 
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
               date: today,
               check_in: now,
               status: "PRESENT",
+              organization_id: orgId as string,
             });
             
             // Re-calculate total_previous_seconds so the frontend has up-to-date data after POST
@@ -107,6 +109,7 @@ export async function POST(request: Request) {
           date: today,
           check_in: now,
           status: "PRESENT",
+          organization_id: orgId as string,
         });
       } else {
         record.check_in = now;

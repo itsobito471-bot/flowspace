@@ -6,6 +6,8 @@ import { Leave } from "@/src/lib/models/Leave";
 import { User } from "@/src/lib/models/User";
 import { Notification } from "@/src/lib/models/Notification";
 import "@/src/lib/models/Role";
+import { CompanySettings } from "@/src/lib/models/Settings";
+import { Holiday } from "@/src/lib/models/Holiday";
 
 // ── GET /api/leave ───────────────────────────────────────────────────────────
 // Employee: returns own leaves (paginated)
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
     const targetUserId = searchParams.get("userId");
 
     const query: Record<string, any> = {};
-    
+
     if (!isAdmin) {
       if (targetUserId && targetUserId !== userId) {
         return NextResponse.json({ success: false, message: "Unauthorized to view these leaves" }, { status: 403 });
@@ -102,10 +104,11 @@ export async function POST(request: Request) {
     await dbConnect();
 
     const userId = (session.user as any).id;
-    const orgId = session.user.orgId;
+    const orgId = (session.user as any).orgId;
     if (!orgId) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
+
     const userName = session.user?.name ?? "An employee";
     const body = await request.json();
     const { start_date, end_date, reason, leave_type } = body;
@@ -119,6 +122,11 @@ export async function POST(request: Request) {
 
     const start = new Date(start_date);
     const end = new Date(end_date);
+
+    // Normalize times to midnight to ensure accurate day counting
+    start.setUTCHours(0, 0, 0, 0);
+    end.setUTCHours(0, 0, 0, 0);
+
     if (end < start) {
       return NextResponse.json(
         { success: false, message: "End date cannot be before start date." },
@@ -126,11 +134,63 @@ export async function POST(request: Request) {
       );
     }
 
-    const days = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    // ─────────────────────────────────────────────────────────────────────────────
+    // NEW: Fetch Company Holidays and Weekends for this specific Organization
+    // ─────────────────────────────────────────────────────────────────────────────
+    const startYear = start.getUTCFullYear();
 
-    // Create the leave record
+    const [settings, holidays] = await Promise.all([
+      CompanySettings.findOne({ organization_id: orgId, year: startYear }).lean(),
+      Holiday.find({ organization_id: orgId, date: { $gte: start, $lte: end } }).lean()
+    ]);
+
+    // Create an array of holiday dates for easy checking (e.g., "2026-12-25")
+    const holidayDateStrings = holidays.map(h => {
+      const d = new Date(h.date);
+      return d.toISOString().split('T')[0];
+    });
+
+    const weekendPolicy = settings?.weekend_policy || [0]; // Default to Sunday off if missing
+    const specificWeekendRules = settings?.specific_weekend_rules || [];
+
+    // Calculate actual working days
+    let actualLeaveDays = 0;
+
+    // Loop through every single day between start and end date
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateString = d.toISOString().split('T')[0];
+      const dayOfWeek = d.getUTCDay(); // 0 = Sunday, 6 = Saturday
+      const weekOfMonth = Math.ceil(d.getUTCDate() / 7); // e.g., 2nd Saturday
+
+      // 1. Is it a public holiday?
+      if (holidayDateStrings.includes(dateString)) continue;
+
+      // 2. Is it a standard weekly off? (e.g., Every Sunday)
+      if (weekendPolicy.includes(dayOfWeek)) continue;
+
+      // 3. Is it a specific alternating off? (e.g., 2nd Saturday)
+      const isSpecificOff = specificWeekendRules.some(
+        rule => rule.dayOfWeek === dayOfWeek && rule.weekNumbers.includes(weekOfMonth)
+      );
+      if (isSpecificOff) continue;
+
+      // If it survived all checks, it's a real working day!
+      actualLeaveDays++;
+    }
+
+    // If the user picked a date range that ONLY contains weekends/holidays
+    if (actualLeaveDays === 0) {
+      return NextResponse.json(
+        { success: false, message: "The selected dates fall entirely on holidays or weekends. No leave required!" },
+        { status: 400 }
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    // Create the leave record (Notice we keep the original start and end date for the record)
     const leave = await Leave.create({
       user_id: userId,
+      organization_id: orgId, // 🔒 Tenant Isolation
       start_date: start,
       end_date: end,
       reason: reason.trim(),
@@ -145,7 +205,7 @@ export async function POST(request: Request) {
         .lean()
         .exec(),
 
-      // Efficient admin lookup scoped to same org — only pull _id
+      // Efficient admin lookup scoped to same org
       User.aggregate([
         { $match: { is_active: true, organization_id: { $eq: (await import("mongoose")).default.Types.ObjectId.createFromHexString(orgId) } } },
         {
@@ -162,15 +222,18 @@ export async function POST(request: Request) {
       ]).exec(),
     ]);
 
-    // Fire-and-forget notification creation — don't block the response
+    // Fire-and-forget notification creation
     if (adminUsers.length > 0) {
       const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       const endLabel = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
       const notifications = adminUsers.map((admin: any) => ({
         recipient_id: admin._id,
+        organization_id: orgId, // 🔒 Tenant Isolation
         type: "LEAVE_REQUEST" as const,
         title: "New Leave Request",
-        message: `${userName} requested ${days} day${days !== 1 ? "s" : ""} of leave (${startLabel} – ${endLabel}).`,
+        // Notice we use "actualLeaveDays" here so the Admin sees the true deduction!
+        message: `${userName} requested ${actualLeaveDays} working day${actualLeaveDays !== 1 ? "s" : ""} of leave (${startLabel} – ${endLabel}).`,
         link: "/leave?tab=pending",
         related_id: leave._id,
         is_read: false,
@@ -181,7 +244,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { success: true, data: populated, message: "Leave request submitted." },
+      { success: true, data: populated, message: `Leave request for ${actualLeaveDays} working days submitted.` },
       { status: 201 }
     );
   } catch (error: any) {

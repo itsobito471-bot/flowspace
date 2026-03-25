@@ -50,6 +50,11 @@ export async function POST(request: Request, context: any) {
       return NextResponse.json({ success: false, message: "Forbidden: Only Admins can modify payslips" }, { status: 403 });
     }
 
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const params = await context.params;
     const id = params.id;
     const body = await request.json();
@@ -61,10 +66,13 @@ export async function POST(request: Request, context: any) {
 
     await dbConnect();
 
-    // Verify user exists
+    // Verify user exists and belongs to same org
     const user = await User.findById(id);
     if (!user) {
       return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    }
+    if (user.organization_id?.toString() !== orgId) {
+      return NextResponse.json({ success: false, message: "Forbidden: User not in your organization." }, { status: 403 });
     }
 
     // Get the base salary for this specific month/year.
@@ -94,7 +102,8 @@ export async function POST(request: Request, context: any) {
       additions,
       deductions,
       net_pay,
-      status: "PAID", // Defaulting to PAID or could accept from body
+      status: "PAID",
+      organization_id: orgId,
     });
 
     return NextResponse.json({ success: true, data: newPayslip });

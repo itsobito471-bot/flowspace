@@ -4,6 +4,7 @@ export interface IOrganization extends Document {
   name: string;
   slug: string;
   plan_id: mongoose.Types.ObjectId | null;
+  
   status: "ACTIVE" | "SUSPENDED";
   max_users: number;
   createdAt: Date;
