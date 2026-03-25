@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import dbConnect from "./mongodb";
 import { User } from "./models/User";
 import "./models/Role"; // required so Mongoose registers the Role schema for .populate()
+import "./models/Organization"; // ensure Organization schema is registered
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -37,7 +38,9 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           image: user.avatar,
-          role: user.role_id, // We'll pass the whole role or just ID depending on requirements
+          role: user.role_id,
+          userType: user.user_type,
+          orgId: user.organization_id ? user.organization_id.toString() : null,
         };
       }
     })
@@ -50,9 +53,11 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
-        token.picture = user.image; // Explicitly map image back to picture or image
+        token.picture = user.image;
+        token.userType = (user as any).userType;
+        token.orgId = (user as any).orgId ?? null;
       }
-      
+
       // Allow manual session update triggered from the client (e.g. after profile edit)
       if (trigger === "update" && session?.image) {
         token.picture = session.image;
@@ -66,6 +71,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role;
+        (session.user as any).userType = token.userType as string;
+        (session.user as any).orgId = token.orgId as string | null;
         session.user.image = token.picture as string || null;
       }
       return session;
@@ -76,3 +83,4 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
+

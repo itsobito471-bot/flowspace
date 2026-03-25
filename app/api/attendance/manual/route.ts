@@ -12,6 +12,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const isAdmin = (session.user as any).role?.level === "ADMIN";
     if (!isAdmin) {
       return NextResponse.json({ success: false, message: "Forbidden: Only Admins can manually add time." }, { status: 403 });
@@ -26,10 +31,13 @@ export async function POST(request: Request) {
 
     await dbConnect();
 
-    // Verify user exists
+    // Verify user exists and belongs to the same organization
     const user = await User.findById(user_id);
     if (!user) {
       return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
+    }
+    if (user.organization_id?.toString() !== orgId) {
+      return NextResponse.json({ success: false, message: "Forbidden: User does not belong to your organization." }, { status: 403 });
     }
 
     const normalizedDate = new Date(date);

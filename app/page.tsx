@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
@@ -26,7 +26,14 @@ export default function LoginPage() {
     if (result?.error) {
       setError(result.error);
     } else {
-      router.push("/home");
+      // Read the freshly set session to know which portal to land on
+      const session = await getSession();
+      const userType = (session?.user as any)?.userType;
+      if (userType === "SUPER_ADMIN") {
+        router.push("/organizations");
+      } else {
+        router.push("/home");
+      }
     }
   };
 
@@ -35,7 +42,7 @@ export default function LoginPage() {
       {/* Left Column: Branding / Marketing Images */}
       <div className="hidden lg:flex w-[55%] flex-col justify-between p-12 relative overflow-hidden bg-black">
         {/* Abstract wavy background image placeholder */}
-        <div 
+        <div
           className="absolute inset-0 z-0 opacity-80 mix-blend-screen"
           style={{
             backgroundImage: 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
@@ -143,8 +150,8 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required
                   />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-0 top-1/2 -translate-y-1/2 text-muted hover:text-foreground transition-colors"
                   >

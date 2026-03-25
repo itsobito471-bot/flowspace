@@ -4,7 +4,8 @@ import { User } from "@/src/lib/models/User";
 import "@/src/lib/models/Role"; // ensure Role schema is registered for .populate()
 import { Attendance } from "@/src/lib/models/Attendance";
 import bcrypt from "bcryptjs";
-
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/lib/auth";
 function getTodayDate() {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
@@ -15,13 +16,24 @@ export async function GET(request: Request) {
   try {
     await dbConnect();
 
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user || !session.user.orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    // We save their specific Organization ID here
+    const myOrgId = session.user.orgId;
+
+    const filter: any = { organization_id: myOrgId };
+
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
     const skip = (page - 1) * limit;
 
     const [users, totalCount] = await Promise.all([
-      User.find({})
+      User.find(filter)
         .populate("role_id", "title department level")
         .select("name email is_active role_id createdAt employee_id date_of_joining")
         .sort({ createdAt: -1 })
@@ -73,6 +85,12 @@ export async function POST(request: Request) {
   try {
     await dbConnect();
 
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || !session.user.orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+    const myOrgId = session.user.orgId;
+
     const body = await request.json();
     const { name, email, password, role_id, employee_id, date_of_joining } = body;
 
@@ -95,6 +113,7 @@ export async function POST(request: Request) {
       role_id: role_id || undefined,
       earned_flex_leaves: 0,
       is_active: true,
+      organization_id: myOrgId,
     });
 
     // Re-fetch with populated role so the UI can add the row immediately

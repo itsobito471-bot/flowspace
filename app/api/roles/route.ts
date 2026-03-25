@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/src/lib/mongodb";
 import { Role } from "@/src/lib/models/Role";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/lib/auth";
 
 // ── GET — list all roles ─────────────────────────────────────────────────────
 export async function GET(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     await dbConnect();
 
     const { searchParams } = new URL(request.url);
@@ -39,6 +46,15 @@ export async function GET(request: Request) {
 // ── POST — create a new role ─────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+    const isAdmin = (session.user as any)?.role?.level === "ADMIN";
+    if (!isAdmin) {
+      return NextResponse.json({ success: false, message: "Forbidden: Only Admins can create roles." }, { status: 403 });
+    }
+
     await dbConnect();
 
     const body = await request.json();

@@ -3,9 +3,22 @@ import dbConnect from "@/src/lib/mongodb";
 import { Role } from "@/src/lib/models/Role";
 import { User } from "@/src/lib/models/User";
 import mongoose from "mongoose";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/lib/auth";
+
+async function requireAdmin() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 }) };
+  const isAdmin = (session.user as any)?.role?.level === "ADMIN";
+  if (!isAdmin) return { error: NextResponse.json({ success: false, message: "Forbidden: Admins only." }, { status: 403 }) };
+  return { session };
+}
 
 export async function PATCH(request: Request, context: any) {
   try {
+    const { error } = await requireAdmin();
+    if (error) return error;
+
     await dbConnect();
     
     const params = await context.params;
@@ -41,6 +54,9 @@ export async function PATCH(request: Request, context: any) {
 
 export async function DELETE(request: Request, context: any) {
   try {
+    const { error } = await requireAdmin();
+    if (error) return error;
+
     await dbConnect();
     
     const params = await context.params;
@@ -71,3 +87,4 @@ export async function DELETE(request: Request, context: any) {
     return NextResponse.json({ success: false, message: "Failed to delete role." }, { status: 500 });
   }
 }
+

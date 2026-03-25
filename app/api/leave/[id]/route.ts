@@ -30,6 +30,11 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
     }
 
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     await dbConnect();
 
     const body = await request.json();
@@ -49,6 +54,12 @@ export async function PATCH(
 
     if (!leave) {
       return NextResponse.json({ success: false, message: "Leave not found." }, { status: 404 });
+    }
+
+    // Verify the leave belongs to a user in the admin's org
+    const leaveUser = await (await import("@/src/lib/models/User")).User.findById((leave as any).user_id).select("organization_id").lean();
+    if (!leaveUser || (leaveUser as any).organization_id?.toString() !== orgId) {
+      return NextResponse.json({ success: false, message: "Forbidden: This leave does not belong to your organization." }, { status: 403 });
     }
     if (leave.status === "REJECTED") {
       return NextResponse.json(

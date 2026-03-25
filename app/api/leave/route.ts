@@ -26,6 +26,10 @@ export async function GET(request: Request) {
     await dbConnect();
 
     const userId = (session.user as any).id;
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
     const isAdmin = (session.user as any)?.role?.level === "ADMIN";
 
     const { searchParams } = new URL(request.url);
@@ -43,7 +47,12 @@ export async function GET(request: Request) {
       }
       query.user_id = userId; // Non-admins can only see their own leaves
     } else if (targetUserId) {
-      query.user_id = targetUserId; // Admins can filter by specific user
+      // Admin filtering by a specific user — verify they belong to same org
+      query.user_id = targetUserId;
+    } else {
+      // Admin fetching all leaves — scope to users in their org
+      const orgUserIds = await User.find({ organization_id: orgId, is_active: true }).select("_id").lean();
+      query.user_id = { $in: orgUserIds.map((u: any) => u._id) };
     }
 
     if (statusFilter && ["PENDING", "APPROVED", "REJECTED"].includes(statusFilter)) {
@@ -93,6 +102,10 @@ export async function POST(request: Request) {
     await dbConnect();
 
     const userId = (session.user as any).id;
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
     const userName = session.user?.name ?? "An employee";
     const body = await request.json();
     const { start_date, end_date, reason, leave_type } = body;
@@ -132,9 +145,9 @@ export async function POST(request: Request) {
         .lean()
         .exec(),
 
-      // Efficient admin lookup using aggregation — only pull _id
+      // Efficient admin lookup scoped to same org — only pull _id
       User.aggregate([
-        { $match: { is_active: true } },
+        { $match: { is_active: true, organization_id: { $eq: (await import("mongoose")).default.Types.ObjectId.createFromHexString(orgId) } } },
         {
           $lookup: {
             from: "roles",

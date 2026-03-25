@@ -18,6 +18,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     await dbConnect();
     const today = getTodayDate();
 
@@ -26,9 +31,9 @@ export async function GET(request: Request) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "24", 10)));
     const skip = (page - 1) * limit;
 
-    // Get paginated active users + total count in parallel
+    // Get paginated active users + total count in parallel — scoped to same org
     const [users, totalCount] = await Promise.all([
-      User.find({ is_active: true })
+      User.find({ is_active: true, organization_id: orgId })
         .select("_id name email avatar role_id")
         .sort({ name: 1 })
         .skip(skip)

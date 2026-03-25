@@ -10,6 +10,8 @@ export interface IUser extends Document {
   role_id: mongoose.Types.ObjectId;
   earned_flex_leaves: number;
   is_active: boolean;
+  organization_id?: mongoose.Types.ObjectId | null;
+  user_type: "SUPER_ADMIN" | "ORG_USER";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +27,12 @@ const UserSchema = new Schema<IUser>(
     role_id: { type: Schema.Types.ObjectId, ref: "Role", required: false },
     earned_flex_leaves: { type: Number, default: 0 },
     is_active: { type: Boolean, default: true },
+    organization_id: { type: Schema.Types.ObjectId, ref: "Organization", default: null },
+    user_type: {
+      type: String,
+      enum: ["SUPER_ADMIN", "ORG_USER"],
+      default: "ORG_USER",
+    },
   },
   { timestamps: true }
 );
@@ -33,3 +41,4 @@ if (mongoose.models.User) {
   delete mongoose.models.User;
 }
 export const User: Model<IUser> = mongoose.model<IUser>("User", UserSchema);
+

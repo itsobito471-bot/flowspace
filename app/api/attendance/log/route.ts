@@ -12,6 +12,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId = session.user.orgId;
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const targetUserId = searchParams.get("userId");
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -25,6 +30,14 @@ export async function GET(request: Request) {
     const isAdmin = (session.user as any).role?.level === "ADMIN";
     if (targetUserId !== (session.user as any).id && !isAdmin) {
       return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
+    }
+
+    // Admins can only view logs for users in their own org
+    if (isAdmin && targetUserId !== (session.user as any).id) {
+      const targetUser = await User.findById(targetUserId).select("organization_id").lean();
+      if (!targetUser || (targetUser as any).organization_id?.toString() !== orgId) {
+        return NextResponse.json({ success: false, message: "Forbidden: User not in your organization." }, { status: 403 });
+      }
     }
 
     await dbConnect();
