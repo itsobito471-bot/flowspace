@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronLeft, Loader2, Calendar as CalendarIcon, FileText, CheckSquare, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ChevronLeft, Loader2, Calendar as CalendarIcon, FileText, CheckSquare, CheckCircle2, XCircle, Clock, DollarSign, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CalendarView from "@/components/CalendarView";
+import PayrollSection from "@/src/components/employee/PayrollSection";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -279,6 +280,8 @@ function AttendanceLogTab({ employeeId }: { employeeId: string }) {
   );
 }
 
+// Removed old salary components since PayrollSection replaces them.
+
 export default function EmployeeProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -287,7 +290,7 @@ export default function EmployeeProfilePage() {
 
   const [employee, setEmployee] = useState<EmployeeDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"CALENDAR" | "LOGS" | "LEAVES" | "TASKS">("CALENDAR");
+  const [activeTab, setActiveTab] = useState<"CALENDAR" | "LOGS" | "LEAVES" | "TASKS" | "SALARY">("CALENDAR");
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // to reload child components after manual add
 
@@ -370,6 +373,14 @@ export default function EmployeeProfilePage() {
           >
             <div className="flex items-center gap-2"><CheckSquare size={16} /> Tasks</div>
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab("SALARY")}
+              className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 shrink-0 ${activeTab === "SALARY" ? "border-cyan text-cyan" : "border-transparent text-muted hover:text-foreground"}`}
+            >
+              <div className="flex items-center gap-2"><DollarSign size={16} /> Salary Packages</div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -406,6 +417,12 @@ export default function EmployeeProfilePage() {
             <motion.div key="tasks" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col items-center justify-center h-48 text-muted">
               <CheckSquare size={32} className="mb-4 opacity-50" />
               <p className="text-sm font-medium">Task assignments view coming soon.</p>
+            </motion.div>
+          )}
+
+          {activeTab === "SALARY" && isAdmin && (
+            <motion.div key="salary" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full mt-4">
+              <PayrollSection userId={employee._id} isAdmin={isAdmin} />
             </motion.div>
           )}
         </AnimatePresence>

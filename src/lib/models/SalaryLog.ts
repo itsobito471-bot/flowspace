@@ -3,6 +3,7 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export interface ISalaryLog extends Document {
   user_id: mongoose.Types.ObjectId;
   amount: number;
+  breakdown: { title: string; amount: number }[];
   effective_date: Date;
   changed_by: mongoose.Types.ObjectId | null;
   createdAt: Date;
@@ -13,6 +14,12 @@ const SalaryLogSchema = new Schema<ISalaryLog>(
   {
     user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     amount: { type: Number, required: true },
+    breakdown: [
+      {
+        title: { type: String, required: true },
+        amount: { type: Number, required: true },
+      },
+    ],
     effective_date: { type: Date, required: true },
     /**
      * changed_by is nullable — null signals a system/initial entry made

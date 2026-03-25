@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
-import { Camera, Loader2, Save, User as UserIcon } from "lucide-react";
+import { Camera, Loader2, Save, User as UserIcon, FileText } from "lucide-react";
 import ErrorModal from "@/components/ErrorModal";
+import PayrollSection from "@/src/components/employee/PayrollSection";
 
 export default function ProfilePage() {
   const { data: session, update, status } = useSession();
@@ -175,6 +176,17 @@ export default function ProfilePage() {
             </div>
           </form>
         </div>
+
+        {/* My Payslips Section */}
+        {(session?.user as any)?.id && (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <FileText size={18} className="text-muted" />
+              <h2 className="text-lg font-bold tracking-tight">My Payslips</h2>
+            </div>
+            <PayrollSection userId={(session?.user as any)?.id} isAdmin={false} />
+          </div>
+        )}
       </motion.div>
     </>
   );
