@@ -77,14 +77,38 @@ export async function GET(request: Request) {
       ]
     }).lean();
 
-    // 3. Fetch Settings and Holidays to inject weekends/holidays if no attendance exists
+    // 3. Fetch Settings and Holidays (org-scoped)
     const currentYear = start.getFullYear();
-    const settings = await CompanySettings.findOne({ year: currentYear }).lean();
+    const settings = await CompanySettings.findOne({ organization_id: orgId, year: currentYear }).lean();
     const weekends = (settings as any)?.weekend_policy || [0]; // default Sunday
-    
+
+    // Holidays within the requested date range (for calendar coloring)
     const holidays = await Holiday.find({
+      organization_id: orgId,
       date: { $gte: start, $lte: end }
     }).lean();
+
+    // All holidays for the full year (for the summary widget)
+    const yearStart = new Date(Date.UTC(currentYear, 0, 1));
+    const yearEnd = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+    const allYearHolidays = await Holiday.find({
+      organization_id: orgId,
+      date: { $gte: yearStart, $lte: yearEnd }
+    }).sort({ date: 1 }).lean();
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const passedHolidays = allYearHolidays.filter(h => new Date(h.date) <= today).length;
+
+    const holidaySummary = {
+      total: allYearHolidays.length,
+      passed: passedHolidays,
+      remaining: allYearHolidays.length - passedHolidays,
+      upcoming: allYearHolidays
+        .filter(h => new Date(h.date) >= today)
+        .slice(0, 3)
+        .map(h => ({ title: h.title, date: h.date, type: h.type })),
+    };
 
     // Generate dummy leaves for weekends and holidays
     const finalLeaves = [...leaves];
@@ -97,32 +121,30 @@ export async function GET(request: Request) {
 
     while (currentDate <= end) {
       const dayStr = currentDate.toISOString().split('T')[0];
-      
-      // If user has not checked in on this day
-      if (!attendanceMap.has(dayStr)) {
-        // Is it a holiday?
-        const holidayMatch = holidays.find(h => new Date(h.date).toISOString().split('T')[0] === dayStr);
-        if (holidayMatch) {
-          finalLeaves.push({
-            _id: holidayMatch._id.toString(),
-            start_date: new Date(currentDate),
-            end_date: new Date(currentDate),
-            leave_type: holidayMatch.title,
-            status: "APPROVED"
-          } as any);
-        }  
-        // Else Is it a weekend?
-        else if (weekends.includes(currentDate.getDay())) {
-          finalLeaves.push({
-            _id: `weekend-${dayStr}`,
-            start_date: new Date(currentDate),
-            end_date: new Date(currentDate),
-            leave_type: "Weekend",
-            status: "APPROVED"
-          } as any);
-        }
+      const hasAttendance = attendanceMap.has(dayStr);
+
+      // Always inject public holidays — they show regardless of attendance
+      const holidayMatch = holidays.find(h => new Date(h.date).toISOString().split('T')[0] === dayStr);
+      if (holidayMatch) {
+        finalLeaves.push({
+          _id: holidayMatch._id.toString(),
+          start_date: new Date(currentDate),
+          end_date: new Date(currentDate),
+          leave_type: holidayMatch.title,
+          status: "APPROVED"
+        } as any);
       }
-      
+      // Only inject Weekend label if no attendance that day AND not already a holiday
+      else if (!hasAttendance && weekends.includes(currentDate.getDay())) {
+        finalLeaves.push({
+          _id: `weekend-${dayStr}`,
+          start_date: new Date(currentDate),
+          end_date: new Date(currentDate),
+          leave_type: "Weekend",
+          status: "APPROVED"
+        } as any);
+      }
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
@@ -131,6 +153,7 @@ export async function GET(request: Request) {
       data: {
         attendance: attendanceRecords,
         leaves: finalLeaves,
+        holidaySummary,
       }
     });
 

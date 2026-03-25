@@ -28,6 +28,13 @@ interface LeaveData {
   status: string;
 }
 
+interface HolidaySummary {
+  total: number;
+  passed: number;
+  remaining: number;
+  upcoming: { title: string; date: string; type: string }[];
+}
+
 interface CalendarViewProps {
   employeeId: string;
 }
@@ -36,6 +43,7 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
   // State: Data
   const [attendance, setAttendance] = useState<AttendanceData[]>([]);
   const [leaves, setLeaves] = useState<LeaveData[]>([]);
+  const [holidaySummary, setHolidaySummary] = useState<HolidaySummary | null>(null);
   const [loading, setLoading] = useState(false);
 
   // State: Dates
@@ -67,6 +75,7 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
       if (json.success) {
         setAttendance(json.data.attendance || []);
         setLeaves(json.data.leaves || []);
+        if (json.data.holidaySummary) setHolidaySummary(json.data.holidaySummary);
       }
     } catch (e) {
       console.error(e);
@@ -304,9 +313,62 @@ export default function CalendarView({ employeeId }: CalendarViewProps) {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded bg-violet-500/20 border border-violet-500/40" />
-              <span className="text-xs font-medium text-muted">Approved Leave</span>
+              <span className="text-xs font-medium text-muted">Leave / Holiday</span>
             </div>
           </div>
+
+          {/* Holiday Summary Widget */}
+          {holidaySummary && (
+            <div className="mt-6 pt-6 border-t border-muted/10">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-muted mb-3">Public Holidays {new Date().getFullYear()}</h4>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-muted/5 border border-muted/10 rounded-xl p-2 text-center">
+                  <div className="text-lg font-black text-foreground">{holidaySummary.total}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-muted font-bold">Total</div>
+                </div>
+                <div className="bg-muted/5 border border-muted/10 rounded-xl p-2 text-center">
+                  <div className="text-lg font-black text-violet-400">{holidaySummary.passed}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-muted font-bold">Taken</div>
+                </div>
+                <div className="bg-muted/5 border border-muted/10 rounded-xl p-2 text-center">
+                  <div className="text-lg font-black text-cyan">{holidaySummary.remaining}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-muted font-bold">Left</div>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full h-1.5 bg-muted/10 rounded-full overflow-hidden mb-4">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-cyan rounded-full transition-all"
+                  style={{ width: holidaySummary.total > 0 ? `${(holidaySummary.passed / holidaySummary.total) * 100}%` : "0%" }}
+                />
+              </div>
+
+              {/* Upcoming Holidays */}
+              {holidaySummary.upcoming.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Upcoming</p>
+                  {holidaySummary.upcoming.map((h, i) => (
+                    <div key={i} className="flex items-center gap-2.5 py-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-cyan shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{h.title}</p>
+                        <p className="text-[10px] text-muted">
+                          {format(new Date(h.date), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {holidaySummary.upcoming.length === 0 && (
+                <p className="text-[10px] text-muted text-center py-2">No more holidays this year 🎉</p>
+              )}
+            </div>
+          )}
         </div>
 
       </div>
