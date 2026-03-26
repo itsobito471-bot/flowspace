@@ -6,6 +6,7 @@ import { Attendance } from "@/src/lib/models/Attendance";
 import { Leave } from "@/src/lib/models/Leave";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import mongoose from "mongoose";
+import { BlackPoint } from "@/src/lib/models/BlackPoint";
 
 // Helper to get normalized "today" date (midnight local time or UTC based, let's use UTC start of day)
 function getTodayDate() {
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
               status: "PRESENT",
               organization_id: orgId as string,
             });
-            
+
             // Re-calculate total_previous_seconds so the frontend has up-to-date data after POST
             const allTodayRecords = await Attendance.find({ user_id: userId, date: today }).sort({ check_in: 1 }).lean();
             let total_previous_seconds = 0;

@@ -194,28 +194,28 @@ export default function SettingsPage() {
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 1 + i); // CurrentYear - 1 up to + 4
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-muted/10 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center text-cyan">
+      <div className="flex items-start justify-between gap-3 border-b border-muted/10 pb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center text-cyan">
             <SettingsIcon size={20} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Company Settings</h1>
-            <p className="text-sm text-muted">Configure global leave quotas and holiday policies.</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Company Settings</h1>
+            <p className="text-xs sm:text-sm text-muted truncate">Configure global leave quotas and holiday policies.</p>
           </div>
         </div>
 
-        {/* Year Selector */}
-        <div className="flex items-center gap-2">
-          <Calendar size={16} className="text-muted" />
-          <span className="text-sm font-semibold text-muted uppercase tracking-widest hidden sm:inline-block">Config Year:</span>
+        {/* Year Selector — always on the right */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Calendar size={16} className="text-muted hidden sm:block" />
+          <span className="text-xs sm:text-sm font-semibold text-muted uppercase tracking-widest hidden sm:inline-block">Year:</span>
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(Number(e.target.value))}
-            className="bg-surface border border-muted/20 rounded-xl px-3 py-1.5 text-foreground font-bold focus:outline-none focus:border-cyan appearance-none cursor-pointer"
+            className="bg-surface border border-muted/20 rounded-xl px-2 sm:px-3 py-1.5 text-foreground font-bold text-sm focus:outline-none focus:border-cyan appearance-none cursor-pointer"
           >
             {yearOptions.map(y => (
               <option key={y} value={y}>{y}</option>
@@ -244,7 +244,7 @@ export default function SettingsPage() {
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-cyan" size={32} /></div>
       ) : (
-        <div className="bg-surface border border-muted/10 rounded-2xl p-6 lg:p-8 space-y-8">
+        <div className="bg-surface border border-muted/10 rounded-2xl p-4 sm:p-6 lg:p-8 space-y-8">
 
           {/* General Attendance Rules */}
           <section>
@@ -343,14 +343,14 @@ export default function SettingsPage() {
           {/* Leave Quota */}
           {/* Categorized Leave Types */}
           <section>
-            <div className="flex justify-between items-end mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-4">
               <div>
                 <h2 className="text-lg font-bold text-foreground mb-2">Leave Categories ({selectedYear})</h2>
                 <p className="text-sm text-muted">Define the types of leaves available and their yearly quotas.</p>
               </div>
               <button
                 onClick={() => setLeaveTypes(prev => [...prev, { name: "", quota: 0 }])}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-muted/20 text-xs font-bold text-foreground hover:bg-muted/10 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-muted/20 text-xs font-bold text-foreground hover:bg-muted/10 transition-colors self-start sm:self-auto shrink-0"
               >
                 <Plus size={14} /> Add Category
               </button>
@@ -451,9 +451,9 @@ export default function SettingsPage() {
                 if (weekendPolicy.includes(idx)) return null;
 
                 return (
-                  <div key={`alt-${day}`} className="flex items-center gap-4">
-                    <div className="w-24 text-sm font-semibold text-foreground">{day}</div>
-                    <div className="flex gap-2">
+                  <div key={`alt-${day}`} className="flex flex-col xs:flex-row xs:items-center gap-2">
+                    <div className="w-full xs:w-24 text-sm font-semibold text-foreground">{day}</div>
+                    <div className="flex gap-2 flex-wrap">
                       {[1, 2, 3, 4, 5].map((weekNum) => {
                         const key = `${idx}-${weekNum}`;
                         const checked = specificRules.includes(key);
@@ -483,7 +483,7 @@ export default function SettingsPage() {
 
           {/* Public Holidays Array */}
           <section>
-            <div className="flex justify-between items-end mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-4">
               <div>
                 <h2 className="text-lg font-bold text-foreground mb-2">Public Holidays ({selectedYear})</h2>
                 <p className="text-sm text-muted">
@@ -492,7 +492,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={addHoliday}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-muted/20 text-xs font-bold text-foreground hover:bg-muted/10 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-muted/20 text-xs font-bold text-foreground hover:bg-muted/10 transition-colors self-start sm:self-auto shrink-0"
               >
                 <Plus size={14} /> Add Holiday
               </button>
@@ -557,7 +557,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               {saving ? "Saving Changes..." : `Save Settings for ${selectedYear}`}

@@ -4,7 +4,7 @@ export interface IOrganization extends Document {
   name: string;
   slug: string;
   plan_id: mongoose.Types.ObjectId | null;
-  
+  is_blackpoint_enabled: boolean;
   status: "ACTIVE" | "SUSPENDED";
   max_users: number;
   createdAt: Date;
@@ -22,6 +22,7 @@ const OrganizationSchema = new Schema<IOrganization>(
       default: "ACTIVE",
     },
     max_users: { type: Number, default: 10 },
+    is_blackpoint_enabled: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

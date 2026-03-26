@@ -38,17 +38,17 @@ export default function TopBar({ userName, userRole, userImage }: TopBarProps) {
                  relative z-40"
     >
       {/* ── Search ── */}
-      <div className="flex items-center gap-3 bg-muted/5 border border-muted/10 rounded-full px-4 py-2 w-full max-w-sm group focus-within:border-cyan/30 transition-colors">
-        <Search size={14} className="text-muted group-focus-within:text-cyan transition-colors" />
+      <div className="flex items-center gap-3 bg-muted/5 border border-muted/10 rounded-full px-4 py-2 flex-1 min-w-0 max-w-sm group focus-within:border-cyan/30 transition-colors">
+        <Search size={14} className="text-muted group-focus-within:text-cyan transition-colors shrink-0" />
         <input
           type="text"
           placeholder="Search Command Center..."
-          className="bg-transparent text-sm text-foreground placeholder:text-muted/50 focus:outline-none w-full"
+          className="bg-transparent text-sm text-foreground placeholder:text-muted/50 focus:outline-none w-full min-w-0"
         />
       </div>
 
       {/* ── Right side ── */}
-      <div className="flex items-center gap-4 ml-6">
+      <div className="flex items-center gap-3 ml-3 sm:gap-4 sm:ml-6 shrink-0">
         
         {/* Theme Toggle */}
         {mounted && (
@@ -66,16 +66,16 @@ export default function TopBar({ userName, userRole, userImage }: TopBarProps) {
 
         {/* User pill */}
         <Link href="/profile">
-          <div className="flex items-center gap-3 pl-4 border-l border-muted/20 cursor-pointer group">
+          <div className="flex items-center gap-2 sm:gap-3 pl-3 sm:pl-4 border-l border-muted/20 cursor-pointer group">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-foreground leading-none group-hover:text-cyan transition-colors">{userName}</p>
               <p className="text-[10px] text-muted tracking-[0.12em] uppercase mt-0.5">{displayRole}</p>
             </div>
 
             {userImage ? (
-              <img src={userImage} alt={userName} className="w-9 h-9 rounded-full object-cover border border-muted/20 group-hover:border-cyan/40 transition-colors" />
+              <img src={userImage} alt={userName} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-muted/20 group-hover:border-cyan/40 transition-colors" />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan/40 to-violet/40 border border-cyan/20 flex items-center justify-center text-sm font-bold text-white group-hover:shadow-[0_0_15px_rgba(45,212,191,0.4)] transition-all">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-cyan/40 to-violet/40 border border-cyan/20 flex items-center justify-center text-sm font-bold text-white group-hover:shadow-[0_0_15px_rgba(45,212,191,0.4)] transition-all shrink-0">
                 {initials}
               </div>
             )}
