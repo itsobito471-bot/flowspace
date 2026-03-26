@@ -78,18 +78,69 @@ export async function POST(request: Request) {
         const userId = userAgg._id;
 
         // ── 3. Create an auto "Loss of Pay" leave record for 1 day ────────
+        // const today = new Date();
+        // today.setUTCHours(0, 0, 0, 0);
+
+        // await Leave.create({
+        //   user_id: userId,
+        //   organization_id: new mongoose.Types.ObjectId(orgId),
+        //   start_date: today,
+        //   end_date: today,
+        //   reason: `Automatic Loss of Pay deduction for accumulating ${userAgg.totalPoints} demerit points (threshold: ${threshold}).`,
+        //   leave_type: "Loss of Pay",
+        //   status: "APPROVED",          // auto-approved
+        //   is_loss_of_pay: true,
+        // });
+
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
+        const startOfYear = new Date(Date.UTC(year, 0, 1));
+        const endOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
 
+        const takenLeaves = await Leave.find({
+          user_id: userId,
+          organization_id: new mongoose.Types.ObjectId(orgId),
+          status: "APPROVED",
+          is_loss_of_pay: { $ne: true }, // Only count their actual paid time off
+          start_date: { $gte: startOfYear, $lte: endOfYear }
+        }).lean();
+
+        const takenCounts: Record<string, number> = {};
+        for (const l of takenLeaves) {
+          // Simple math to count days of each approved leave
+          const days = Math.round((new Date(l.end_date).getTime() - new Date(l.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          takenCounts[l.leave_type] = (takenCounts[l.leave_type] || 0) + days;
+        }
+
+        const availableLeaveTypes = settings?.leave_types || [];
+
+        let selectedLeaveType = "Loss of Pay"; // Default to punishment
+        let isLOP = true;
+
+        for (const lt of availableLeaveTypes) {
+          const name = lt.name;
+          const quota = lt.quota;
+
+          const taken = takenCounts[name] || 0;
+
+          // Do they have a balance remaining for this specific leave type?
+          if (taken < quota) {
+            selectedLeaveType = name; // We found a paid leave to use!
+            isLOP = false;            // Spare them from Loss of Pay!
+            break;                    // Stop looking, we found our deduction target.
+          }
+        }
+
+        // D. Create the actual Leave Deduction Record
         await Leave.create({
           user_id: userId,
           organization_id: new mongoose.Types.ObjectId(orgId),
           start_date: today,
           end_date: today,
-          reason: `Automatic Loss of Pay deduction for accumulating ${userAgg.totalPoints} demerit points (threshold: ${threshold}).`,
-          leave_type: "Loss of Pay",
-          status: "APPROVED",          // auto-approved
-          is_loss_of_pay: true,
+          reason: `Automatic deduction (${selectedLeaveType}) for accumulating ${userAgg.totalPoints} demerit points.`,
+          leave_type: selectedLeaveType,
+          status: "APPROVED",
+          is_loss_of_pay: isLOP,
         });
 
         // ── 4. Resolve the contributing Black Point documents ─────────────
