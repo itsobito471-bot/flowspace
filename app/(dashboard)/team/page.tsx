@@ -390,7 +390,7 @@ function RoleCard({ role, index, onEdit, onDelete }: { role: Role; index: number
             ${isAdmin ? LEVEL_STYLES.ADMIN : LEVEL_STYLES.EMPLOYEE}`}>
             {role.level}
           </span>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button onClick={onEdit} className="text-muted hover:text-cyan p-1 transition-colors"><Pencil size={14} /></button>
             <button onClick={onDelete} className="text-muted hover:text-red-500 p-1 transition-colors"><Trash2 size={14} /></button>
           </div>
@@ -453,7 +453,7 @@ function MemberRow({ member, index, onEdit, onDelete }: { member: TeamMember; in
         {new Date(member.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
       </td>
       <td className="px-6 py-4">
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <Link href={`/team/${member._id}`} className="text-muted hover:text-cyan p-1.5 transition-colors"><Eye size={15} /></Link>
           <button onClick={onEdit} className="text-muted hover:text-cyan p-1.5 transition-colors"><Pencil size={15} /></button>
           <button onClick={onDelete} className="text-muted hover:text-red-500 p-1.5 transition-colors"><Trash2 size={15} /></button>

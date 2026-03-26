@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronLeft, Loader2, Calendar as CalendarIcon, FileText, CheckSquare, CheckCircle2, XCircle, Clock, DollarSign, Plus } from "lucide-react";
+import { ChevronLeft, Loader2, Calendar as CalendarIcon, FileText, CheckSquare, CheckCircle2, XCircle, Clock, DollarSign, Plus, ShieldAlert } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CalendarView from "@/components/CalendarView";
 import PayrollSection from "@/src/components/employee/PayrollSection";
@@ -99,7 +99,173 @@ function EmployeeLeavesTab({ employeeId }: { employeeId: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Add Manual Time Modal
+// Add Demerit Modal (Admin only)
+// ─────────────────────────────────────────────────────────────────────────────
+function AddDemeritModal({ open, onClose, employeeId, onCreated }: {
+  open: boolean;
+  onClose: () => void;
+  employeeId: string;
+  onCreated: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [points, setPoints] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { if (open) { setReason(""); setPoints(1); setError(null); } }, [open]);
+  if (!open) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch("/api/blackpoints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: employeeId, reason, points }),
+      });
+      const data = await res.json();
+      if (!data.success) { setError(data.message); } else { onCreated(); onClose(); }
+    } catch { setError("Network error."); } finally { setLoading(false); }
+  }
+
+  const inputCls = "w-full bg-background border border-muted/10 rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-amber-400/40 transition-all";
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="pointer-events-auto w-full max-w-md bg-surface border border-muted/10 rounded-2xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldAlert size={18} className="text-amber-400" />
+            <h2 className="text-lg font-bold">Add Manual Demerit</h2>
+          </div>
+          <p className="text-xs text-muted mb-6">Issue a manual black point for this employee.</p>
+          {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl mb-4">{error}</div>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80 block mb-1.5">Points</label>
+              <input type="number" min="1" required value={points} onChange={e => setPoints(Number(e.target.value))} className={inputCls} />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80 block mb-1.5">Reason</label>
+              <textarea required rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Describe the reason for this demerit..." className={inputCls + " resize-none"} />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 transition-all">Cancel</button>
+              <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-amber-400 text-black hover:bg-amber-300 transition-all flex justify-center items-center">
+                {loading ? <Loader2 size={16} className="animate-spin" /> : "Issue Demerit"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Employee Demerits Tab
+// ─────────────────────────────────────────────────────────────────────────────
+function EmployeeDemeritsTab({ employeeId, isAdmin }: { employeeId: string; isAdmin: boolean }) {
+  const [points, setPoints] = useState<any[]>([]);
+  const [totalUnresolved, setTotalUnresolved] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [demeritModalOpen, setDemeritModalOpen] = useState(false);
+
+  const fetchDemerits = useCallback(() => {
+    setLoading(true);
+    fetch(`/api/blackpoints?userId=${employeeId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) { setPoints(json.data); setTotalUnresolved(json.totalUnresolved ?? 0); }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [employeeId]);
+
+  useEffect(() => { fetchDemerits(); }, [fetchDemerits]);
+
+  const typeColors: Record<string, string> = {
+    AUTO_LATE: "bg-amber-400/10 text-amber-400 border-amber-400/20",
+    AUTO_EARLY_CHECKOUT: "bg-orange-400/10 text-orange-400 border-orange-400/20",
+    MANUAL: "bg-red-500/10 text-red-400 border-red-500/20",
+  };
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
+            <ShieldAlert size={18} className="text-amber-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted uppercase font-bold tracking-widest">Unresolved Points</p>
+            <p className="text-2xl font-black text-foreground">{totalUnresolved}</p>
+          </div>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={() => setDemeritModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-amber-400 text-black text-xs font-bold rounded-lg hover:bg-amber-300 transition-all shadow-sm"
+          >
+            <Plus size={13} /> Add Demerit
+          </button>
+        )}
+      </div>
+
+      <AddDemeritModal
+        open={demeritModalOpen}
+        onClose={() => setDemeritModalOpen(false)}
+        employeeId={employeeId}
+        onCreated={fetchDemerits}
+      />
+
+      {loading ? (
+        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-cyan" /></div>
+      ) : points.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
+          <ShieldAlert size={32} strokeWidth={1.2} />
+          <p className="text-sm">No demerit records found.</p>
+        </div>
+      ) : (
+        <div className="bg-surface border border-muted/10 rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[550px]">
+              <thead>
+                <tr className="border-b border-muted/10 bg-muted/5">
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Date</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Type</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Points</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Reason</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {points.map((p) => (
+                  <tr key={p._id} className="border-b border-muted/10 hover:bg-muted/5 transition-colors">
+                    <td className="px-5 py-3 text-sm font-semibold">{new Date(p.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${typeColors[p.type] ?? "bg-muted/10 text-muted border-muted/20"}`}>{p.type.replace(/_/g, " ")}</span>
+                    </td>
+                    <td className="px-5 py-3 text-sm font-bold text-amber-400">{p.points}</td>
+                    <td className="px-5 py-3 max-w-[220px]"><p className="text-xs text-foreground/80 line-clamp-2" title={p.reason}>{p.reason}</p></td>
+                    <td className="px-5 py-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${p.is_resolved ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+                        {p.is_resolved ? "Resolved" : "Active"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 function AddManualTimeModal({ open, onClose, employeeId, onCreated }: {
   open: boolean;
@@ -290,11 +456,12 @@ export default function EmployeeProfilePage() {
 
   const [employee, setEmployee] = useState<EmployeeDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"CALENDAR" | "LOGS" | "LEAVES" | "TASKS" | "SALARY">("CALENDAR");
+  const [activeTab, setActiveTab] = useState<"CALENDAR" | "LOGS" | "LEAVES" | "TASKS" | "SALARY" | "DEMERITS">("CALENDAR");
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // to reload child components after manual add
 
   const isAdmin = (session?.user as any)?.role?.level === "ADMIN";
+  const [isBlackpointEnabled, setIsBlackpointEnabled] = useState(false);
 
   useEffect(() => {
     // Fetch this user from the main team list to get their role info
@@ -307,6 +474,14 @@ export default function EmployeeProfilePage() {
         }
         setLoading(false);
       });
+
+    // Fetch org-level feature flag
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) setIsBlackpointEnabled(json.data.is_blackpoint_enabled ?? false);
+      })
+      .catch(() => {});
   }, [id]);
 
   if (loading) {
@@ -381,6 +556,14 @@ export default function EmployeeProfilePage() {
               <div className="flex items-center gap-2"><DollarSign size={16} /> Salary Packages</div>
             </button>
           )}
+          {isAdmin && isBlackpointEnabled && (
+            <button
+              onClick={() => setActiveTab("DEMERITS")}
+              className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 shrink-0 ${activeTab === "DEMERITS" ? "border-amber-400 text-amber-400" : "border-transparent text-muted hover:text-foreground"}`}
+            >
+              <div className="flex items-center gap-2"><ShieldAlert size={16} /> Demerits</div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -423,6 +606,12 @@ export default function EmployeeProfilePage() {
           {activeTab === "SALARY" && isAdmin && (
             <motion.div key="salary" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full mt-4">
               <PayrollSection userId={employee._id} isAdmin={isAdmin} />
+            </motion.div>
+          )}
+
+          {activeTab === "DEMERITS" && isAdmin && isBlackpointEnabled && (
+            <motion.div key="demerits" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full">
+              <EmployeeDemeritsTab employeeId={employee._id} isAdmin={isAdmin} />
             </motion.div>
           )}
         </AnimatePresence>

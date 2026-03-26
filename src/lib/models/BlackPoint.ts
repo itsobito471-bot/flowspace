@@ -5,7 +5,7 @@ export interface IBlackPoint extends Document {
     organization_id: mongoose.Types.ObjectId; // 🔒 Tenant Isolation!
     points: number;
     reason: string;
-    type: "AUTO_LATE" | "AUTO_MISSED_CHECKOUT" | "MANUAL";
+    type: "AUTO_LATE" | "AUTO_EARLY_CHECKOUT" | "MANUAL";
     date: Date;
     is_resolved: boolean;
     createdAt: Date;
@@ -20,7 +20,7 @@ const BlackPointSchema = new Schema<IBlackPoint>(
         reason: { type: String, required: true },
         type: {
             type: String,
-            enum: ["AUTO_LATE", "AUTO_MISSED_CHECKOUT", "MANUAL"],
+            enum: ["AUTO_LATE", "AUTO_EARLY_CHECKOUT", "MANUAL"],
             required: true,
         },
         date: { type: Date, required: true },

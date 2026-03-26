@@ -22,7 +22,8 @@ export interface ICompanySettings extends Document {
   penalty_rules: {
     is_enabled: boolean;
     late_grace_period_mins: number;
-    points_for_lop: number;
+    early_checkout_grace_period_mins: number;
+    points_for_leave_deduction: number;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -61,7 +62,8 @@ const CompanySettingsSchema = new Schema<ICompanySettings>(
     penalty_rules: {
       is_enabled: { type: Boolean, default: false },
       late_grace_period_mins: { type: Number, default: 15 },
-      points_for_lop: { type: Number, default: 3 }, // e.g., 3 points = 1 Loss of Pay day
+      early_checkout_grace_period_mins: { type: Number, default: 15 },
+      points_for_leave_deduction: { type: Number, default: 3 }, // e.g., 3 points = 1 Loss of Pay day
     },
   },
   { timestamps: true }

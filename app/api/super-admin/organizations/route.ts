@@ -150,3 +150,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
+
+// ── PATCH /api/super-admin/organizations ─────────────────────────────────────
+// Toggle is_blackpoint_enabled for a specific org.
+// Body: { orgId: string, is_blackpoint_enabled: boolean }
+export async function PATCH(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || !isSuperAdmin(session)) {
+      return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { orgId, is_blackpoint_enabled } = body;
+
+    if (!orgId || typeof is_blackpoint_enabled !== "boolean") {
+      return NextResponse.json({ success: false, message: "orgId and is_blackpoint_enabled (boolean) are required." }, { status: 400 });
+    }
+
+    await dbConnect();
+
+    const updated = await Organization.findByIdAndUpdate(
+      orgId,
+      { $set: { is_blackpoint_enabled } },
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      return NextResponse.json({ success: false, message: "Organization not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Black Point module ${is_blackpoint_enabled ? "enabled" : "disabled"} for ${updated.name}.`,
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error("PATCH /api/super-admin/organizations Error:", error);
+    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+  }
+}

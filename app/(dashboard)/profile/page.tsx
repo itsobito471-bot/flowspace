@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
-import { Camera, Loader2, Save, User as UserIcon, FileText } from "lucide-react";
+import { Camera, Loader2, Save, User as UserIcon, FileText, ShieldAlert } from "lucide-react";
 import ErrorModal from "@/components/ErrorModal";
 import PayrollSection from "@/src/components/employee/PayrollSection";
 
@@ -187,7 +187,112 @@ export default function ProfilePage() {
             <PayrollSection userId={(session?.user as any)?.id} isAdmin={false} />
           </div>
         )}
+
+        {/* My Demerits Section */}
+        {(session?.user as any)?.id && (
+          <MyDemeritsSection userId={(session?.user as any)?.id} />
+        )}
       </motion.div>
     </>
+  );
+}
+
+// ── My Demerits (Employee view) ──────────────────────────────────────────────────
+function MyDemeritsSection({ userId }: { userId: string }) {
+  const [points, setPoints] = useState<any[]>([]);
+  const [totalUnresolved, setTotalUnresolved] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDemerits = useCallback(() => {
+    setLoading(true);
+    fetch("/api/blackpoints")
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          setPoints(json.data);
+          setTotalUnresolved(json.totalUnresolved ?? 0);
+        } else {
+          // Module not enabled or no access — silently hide the section
+          setError(json.message);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [userId]);
+
+  useEffect(() => { fetchDemerits(); }, [fetchDemerits]);
+
+  // If module is disabled for this org, don't render the section at all
+  if (!loading && error) return null;
+
+  const typeLabels: Record<string, string> = {
+    AUTO_LATE: "Late Arrival",
+    AUTO_EARLY_CHECKOUT: "Early Checkout",
+    MANUAL: "Manual",
+  };
+
+  const typeColors: Record<string, string> = {
+    AUTO_LATE: "bg-amber-400/10 text-amber-400 border-amber-400/20",
+    AUTO_EARLY_CHECKOUT: "bg-orange-400/10 text-orange-400 border-orange-400/20",
+    MANUAL: "bg-red-500/10 text-red-400 border-red-500/20",
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <ShieldAlert size={18} className="text-amber-400" />
+        <h2 className="text-lg font-bold tracking-tight">My Demerit History</h2>
+        {!loading && (
+          <span className="ml-auto px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-400">
+            {totalUnresolved} Active
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-cyan" /></div>
+      ) : points.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted bg-surface border border-muted/10 rounded-2xl">
+          <ShieldAlert size={28} strokeWidth={1.2} />
+          <p className="text-sm">No demerit records — keep up the great work!</p>
+        </div>
+      ) : (
+        <div className="bg-surface border border-muted/10 rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[500px]">
+              <thead>
+                <tr className="border-b border-muted/10 bg-muted/5">
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Date</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Type</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Pts</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Reason</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {points.map((p) => (
+                  <tr key={p._id} className="border-b border-muted/10 hover:bg-muted/5 transition-colors">
+                    <td className="px-5 py-3 text-sm font-semibold">{new Date(p.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${typeColors[p.type] ?? "bg-muted/10 text-muted border-muted/20"}`}>
+                        {typeLabels[p.type] ?? p.type}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-sm font-bold text-amber-400">{p.points}</td>
+                    <td className="px-5 py-3 max-w-[220px]"><p className="text-xs text-foreground/80 line-clamp-2" title={p.reason}>{p.reason}</p></td>
+                    <td className="px-5 py-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ p.is_resolved ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+                        {p.is_resolved ? "Resolved" : "Active"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
