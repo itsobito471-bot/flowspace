@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
-// import TopBar from "@/components/TopBar";
 import TopBar from "@/components/TopBar";
+import SuspendGuard from "@/components/SuspendGuard";
 
 /**
  * DashboardLayout
@@ -19,8 +19,13 @@ export default async function DashboardLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  // Protect ALL dashboard routes – redirect to login if no session exists
-  if (!session) {
+  // 🚨 2. SERVER-SIDE LOCK: If they hard-refresh the page and are suspended, kick them instantly!
+  if (session && (session as any).error === "SUSPENDED") {
+    redirect("/?error=suspended");
+  }
+
+  // Protect ALL dashboard routes – redirect to login if no valid session/user exists
+  if (!session || !session.user) {
     redirect("/");
   }
 
@@ -29,24 +34,27 @@ export default async function DashboardLayout({
   const userImage = session.user?.image ?? null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans">
-      {/* ── Desktop/Mobile Sidebar ── */}
-      <Sidebar userRole={userRole} userName={userName} userImage={userImage} />
+    // 🚨 3. CLIENT-SIDE LOCK: Wrap the whole app in the Bouncer to watch them while they browse
+    <SuspendGuard>
+      <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans">
+        {/* ── Desktop/Mobile Sidebar ── */}
+        <Sidebar userRole={userRole} userName={userName} userImage={userImage} />
 
-      {/* ── Main content column ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Fixed top header */}
-        <TopBar userName={userName} userRole={userRole} userImage={userImage} />
+        {/* ── Main content column ── */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Fixed top header */}
+          <TopBar userName={userName} userRole={userRole} userImage={userImage} />
 
-        {/* Scrollable page content */}
-        <main className="flex-1 overflow-y-auto relative">
-          {/* Subtle ambient glow overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan/3 via-transparent to-violet/5 pointer-events-none" />
-          <div className="relative pb-24 md:pb-0">
-            {children}
-          </div>
-        </main>
+          {/* Scrollable page content */}
+          <main className="flex-1 overflow-y-auto relative">
+            {/* Subtle ambient glow overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan/3 via-transparent to-violet/5 pointer-events-none" />
+            <div className="relative pb-24 md:pb-0">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SuspendGuard>
   );
 }

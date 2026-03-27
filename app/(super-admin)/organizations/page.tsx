@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, Plus, X, ChevronRight, ChevronLeft, Check,
-  Loader2, AlertCircle, Users, CreditCard, Shield, Zap,
+  Loader2, AlertCircle, Users, Shield, Zap,
   CheckCircle2, Circle, ArrowRight, Search
 } from "lucide-react";
 import { format } from "date-fns";
@@ -31,6 +31,7 @@ function StatusBadge({ status }: { status: "ACTIVE" | "SUSPENDED" }) {
   );
 }
 
+// ─── Onboard Modal ────────────────────────────────────────────────────────────
 function OnboardModal({ open, onClose, onSuccess }: {
   open: boolean; onClose: () => void; onSuccess: (org: Org) => void;
 }) {
@@ -86,12 +87,10 @@ function OnboardModal({ open, onClose, onSuccess }: {
           className="pointer-events-auto w-full sm:max-w-lg flex flex-col"
           style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: "20px 20px 0 0", boxShadow: "0 -20px 80px rgba(0,0,0,0.6)" }}
         >
-          {/* Drag handle on mobile */}
           <div className="flex justify-center pt-3 pb-0 sm:hidden">
             <div className="w-10 h-1 rounded-full" style={{ background: BORDER }} />
           </div>
 
-          {/* Header */}
           <div className="flex items-center justify-between p-5 pb-0">
             <div>
               <h2 className="text-base font-black">Onboard New Tenant</h2>
@@ -100,7 +99,6 @@ function OnboardModal({ open, onClose, onSuccess }: {
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/5" style={{ color: MUTED }}><X size={16} /></button>
           </div>
 
-          {/* Steps */}
           <div className="flex items-center gap-1 px-5 py-4">
             {steps.map((s, i) => (
               <div key={s} className="flex items-center gap-1 flex-1">
@@ -116,12 +114,10 @@ function OnboardModal({ open, onClose, onSuccess }: {
             ))}
           </div>
 
-          {/* Body */}
           <div className="px-5 pb-1 min-h-[200px] max-h-[50vh] overflow-y-auto">
             <AnimatePresence mode="wait">
               {done ? (
-                <motion.div key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center py-8 gap-3">
+                <motion.div key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-8 gap-3">
                   <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(0,242,254,0.15)", border: `2px solid ${CYAN}` }}>
                     <CheckCircle2 size={28} style={{ color: CYAN }} />
                   </div>
@@ -193,24 +189,17 @@ function OnboardModal({ open, onClose, onSuccess }: {
             {error && <div className="mt-3 flex items-center gap-2 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}><AlertCircle size={14} className="shrink-0" />{error}</div>}
           </div>
 
-          {/* Footer */}
           {!done && (
             <div className="p-5 pt-3 flex items-center justify-between gap-3">
-              <button onClick={() => step > 0 ? setStep(s => s - 1) : onClose()}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ border: `1px solid ${BORDER}`, color: MUTED }}>
+              <button onClick={() => step > 0 ? setStep(s => s - 1) : onClose()} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ border: `1px solid ${BORDER}`, color: MUTED }}>
                 <ChevronLeft size={14} />{step === 0 ? "Cancel" : "Back"}
               </button>
               {step < steps.length - 1 ? (
-                <button onClick={() => setStep(s => s + 1)} disabled={!canNext[step]}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold"
-                  style={{ background: canNext[step] ? `linear-gradient(135deg, ${CYAN}, ${VIOLET})` : SURFACE2, color: canNext[step] ? "#000" : MUTED, cursor: canNext[step] ? "pointer" : "not-allowed" }}>
+                <button onClick={() => setStep(s => s + 1)} disabled={!canNext[step]} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold" style={{ background: canNext[step] ? `linear-gradient(135deg, ${CYAN}, ${VIOLET})` : SURFACE2, color: canNext[step] ? "#000" : MUTED, cursor: canNext[step] ? "pointer" : "not-allowed" }}>
                   Next <ChevronRight size={14} />
                 </button>
               ) : (
-                <button onClick={handleSubmit} disabled={!canNext[step] || loading}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold"
-                  style={{ background: canNext[step] && !loading ? `linear-gradient(135deg, ${CYAN}, ${VIOLET})` : SURFACE2, color: canNext[step] && !loading ? "#000" : MUTED, cursor: canNext[step] && !loading ? "pointer" : "not-allowed" }}>
+                <button onClick={handleSubmit} disabled={!canNext[step] || loading} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold" style={{ background: canNext[step] && !loading ? `linear-gradient(135deg, ${CYAN}, ${VIOLET})` : SURFACE2, color: canNext[step] && !loading ? "#000" : MUTED, cursor: canNext[step] && !loading ? "pointer" : "not-allowed" }}>
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <><ArrowRight size={14} /> Launch</>}
                 </button>
               )}
@@ -222,10 +211,95 @@ function OnboardModal({ open, onClose, onSuccess }: {
   );
 }
 
-// ─── Org Card (mobile) ────────────────────────────────────────────────────────
-function OrgCard({ org }: { org: Org }) {
+// ─── Edit Org Modal (TS SAFE) ─────────────────────────────────────────────────
+// Notice: We define 'org' as strictly 'Org' (not null). 
+// The parent component ensures this modal is only rendered when org is not null!
+function EditOrgModal({ org, onClose, onSuccess }: {
+  org: Org; onClose: () => void; onSuccess: (updatedOrg: Org) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    status: org.status,
+    is_blackpoint_enabled: (org as any).is_blackpoint_enabled || false
+  });
+
+  async function handleSave() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/super-admin/organizations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId: org._id, ...form }),
+      });
+      const json = await res.json();
+      if (json.success) onSuccess(json.data);
+    } finally {
+      setLoading(false);
+      onClose();
+    }
+  }
+
   return (
-    <div className="rounded-2xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+    <>
+      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-sm rounded-2xl p-6 relative"
+          style={{ background: SURFACE, border: `1px solid ${BORDER}` }}
+        >
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-bold">Edit {org.name}</h2>
+            <button onClick={onClose} className="text-muted hover:text-white"><X size={18} /></button>
+          </div>
+
+          <div className="space-y-5">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-muted block mb-2">Account Status</label>
+              <select
+                className="w-full text-sm rounded-xl px-4 py-3 focus:outline-none"
+                style={{ background: BG, border: `1px solid ${BORDER}`, color: form.status === "ACTIVE" ? CYAN : "#f87171" }}
+                value={form.status}
+                onChange={e => setForm(f => ({ ...f, status: e.target.value as "ACTIVE" | "SUSPENDED" }))}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="SUSPENDED">SUSPENDED</option>
+              </select>
+            </div>
+
+            <div className="pt-4 border-t" style={{ borderColor: BORDER }}>
+              <label className="text-xs font-bold uppercase tracking-widest text-muted block mb-3">Premium Modules</label>
+              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all hover:bg-white/5" style={{ border: `1px solid ${BORDER}` }}>
+                <input
+                  type="checkbox"
+                  checked={form.is_blackpoint_enabled}
+                  onChange={e => setForm(f => ({ ...f, is_blackpoint_enabled: e.target.checked }))}
+                  className="w-4 h-4 rounded accent-cyan-500"
+                />
+                <div>
+                  <p className="text-sm font-bold">Black Point System</p>
+                  <p className="text-[10px] text-muted">Allow this org to use automated penalties</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-end gap-3">
+            <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-muted hover:text-white">Cancel</button>
+            <button onClick={handleSave} disabled={loading} className="px-6 py-2 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90">
+              {loading ? <Loader2 size={16} className="animate-spin" /> : "Save Changes"}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </>
+  );
+}
+
+// ─── Org Card (mobile) ────────────────────────────────────────────────────────
+function OrgCard({ org, onClick }: { org: Org; onClick: () => void }) {
+  return (
+    <div onClick={onClick} className="rounded-2xl p-4 cursor-pointer hover:bg-white/5 transition-colors" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="font-bold text-sm">{org.name}</p>
@@ -254,6 +328,9 @@ export default function OrganizationsPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
+  // 🛑 The new state for our Edit Modal
+  const [editOrg, setEditOrg] = useState<Org | null>(null);
+
   const fetchOrgs = useCallback(async () => {
     setLoading(true);
     try {
@@ -271,16 +348,28 @@ export default function OrganizationsPage() {
 
   return (
     <div className="min-h-full" style={{ background: BG, color: "#E8E8F0" }}>
-      <AnimatePresence>{modalOpen && <OnboardModal open={modalOpen} onClose={() => setModalOpen(false)} onSuccess={org => { setOrgs(prev => [{ ...org, user_count: 0 } as Org, ...prev]); setModalOpen(false); }} />}</AnimatePresence>
+      <AnimatePresence>
+        {modalOpen && <OnboardModal open={modalOpen} onClose={() => setModalOpen(false)} onSuccess={org => { setOrgs(prev => [{ ...org, user_count: 0 } as Org, ...prev]); setModalOpen(false); }} />}
 
-      {/* Top bar */}
+        {/* 🛑 We only render the Edit Modal if editOrg is NOT null */}
+        {editOrg && (
+          <EditOrgModal
+            org={editOrg}
+            onClose={() => setEditOrg(null)}
+            onSuccess={(updated) => {
+              setOrgs(prev => prev.map(o => o._id === updated._id ? { ...o, ...updated } : o));
+              setEditOrg(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-5 border-b flex items-center justify-between gap-3" style={{ background: BG, borderColor: BORDER }}>
         <div>
           <h1 className="text-lg sm:text-xl font-black tracking-tight">Organizations</h1>
           <p className="text-xs sm:text-sm mt-0.5 hidden sm:block" style={{ color: MUTED }}>Manage all FlowSpace tenants</p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all"
-          style={{ background: `linear-gradient(135deg, ${CYAN}, ${VIOLET})`, color: "#000" }}>
+        <button onClick={() => setModalOpen(true)} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all" style={{ background: `linear-gradient(135deg, ${CYAN}, ${VIOLET})`, color: "#000" }}>
           <Plus size={14} strokeWidth={2.5} />
           <span className="hidden xs:block">Onboard</span>
           <span className="hidden sm:block"> Tenant</span>
@@ -288,7 +377,6 @@ export default function OrganizationsPage() {
       </div>
 
       <div className="px-4 sm:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {[
             { label: "Total Orgs", value: orgs.length, icon: Building2, color: CYAN },
@@ -309,12 +397,9 @@ export default function OrganizationsPage() {
           ))}
         </div>
 
-        {/* Search */}
         <div className="relative">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
-          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none"
-            style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "#E8E8F0" }}
-            placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "#E8E8F0" }} placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
         {/* Mobile: card list */}
@@ -328,7 +413,8 @@ export default function OrganizationsPage() {
               </div>
             ) : filtered.map((org, i) => (
               <motion.div key={org._id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <OrgCard org={org} />
+                {/* 🛑 Clickable Card */}
+                <OrgCard org={org} onClick={() => setEditOrg(org)} />
               </motion.div>
             ))}
         </div>
@@ -357,9 +443,17 @@ export default function OrganizationsPage() {
                   </div>
                 </td></tr>
               ) : filtered.map((org, i) => (
-                <motion.tr key={org._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                  className="border-b transition-colors" style={{ borderColor: BORDER }}
-                  onMouseEnter={e => (e.currentTarget.style.background = SURFACE2)} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                <motion.tr
+                  key={org._id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  onClick={() => setEditOrg(org)} // 🛑 Clickable Row
+                  className="border-b transition-colors cursor-pointer"
+                  style={{ borderColor: BORDER }}
+                  onMouseEnter={e => (e.currentTarget.style.background = SURFACE2)}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
                   <td className="px-6 py-4"><p className="font-bold text-sm">{org.name}</p><p className="text-[11px] font-mono mt-0.5" style={{ color: MUTED }}>{org.slug}</p></td>
                   <td className="px-6 py-4">
                     {org.plan_id ? <div><p className="text-sm font-semibold">{org.plan_id.name}</p><p className="text-[11px] mt-0.5" style={{ color: MUTED }}>${org.plan_id.price}/mo</p></div>

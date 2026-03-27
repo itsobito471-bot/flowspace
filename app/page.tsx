@@ -23,12 +23,31 @@ export default function LoginPage() {
       password,
     });
 
+    console.log("Login Result:", result);
+
+    // 🚨 1. REAL ERROR CHECK: Catch any error NextAuth throws back
     if (result?.error) {
-      setError(result.error);
-    } else {
+      // Check if the error string contains the word "suspended" anywhere inside it
+      if (result.error.toLowerCase().includes("suspended")) {
+        setError("Your organization's account has been suspended. Please contact support.");
+      }
+      // NextAuth's default error when a throw new Error() happens
+      else if (result.error === "CredentialsSignin" || result.error === "Configuration") {
+        setError("Invalid credentials or account suspended. Please contact support.");
+      }
+      // Fallback for any other custom errors
+      else {
+        setError(result.error);
+      }
+      return; // Stop here so they don't get routed!
+    }
+
+    // ✅ 2. SUCCESS CHECK: The backend approved them
+    if (result?.ok) {
       // Read the freshly set session to know which portal to land on
       const session = await getSession();
       const userType = (session?.user as any)?.userType;
+
       if (userType === "SUPER_ADMIN") {
         router.push("/organizations");
       } else {

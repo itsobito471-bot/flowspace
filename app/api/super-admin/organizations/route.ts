@@ -154,6 +154,7 @@ export async function POST(request: Request) {
 // ── PATCH /api/super-admin/organizations ─────────────────────────────────────
 // Toggle is_blackpoint_enabled for a specific org.
 // Body: { orgId: string, is_blackpoint_enabled: boolean }
+// ── PATCH /api/super-admin/organizations ─────────────────────────────────────
 export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -162,17 +163,24 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { orgId, is_blackpoint_enabled } = body;
+    const { orgId, is_blackpoint_enabled, status, plan_id, name } = body;
 
-    if (!orgId || typeof is_blackpoint_enabled !== "boolean") {
-      return NextResponse.json({ success: false, message: "orgId and is_blackpoint_enabled (boolean) are required." }, { status: 400 });
+    if (!orgId) {
+      return NextResponse.json({ success: false, message: "orgId is required." }, { status: 400 });
     }
 
     await dbConnect();
 
+    // Dynamically build the update object based on what was sent in the request
+    const updateData: any = {};
+    if (typeof is_blackpoint_enabled === "boolean") updateData.is_blackpoint_enabled = is_blackpoint_enabled;
+    if (status === "ACTIVE" || status === "SUSPENDED") updateData.status = status;
+    if (plan_id !== undefined) updateData.plan_id = plan_id || null; // Allow removing plan
+    if (name) updateData.name = name;
+
     const updated = await Organization.findByIdAndUpdate(
       orgId,
-      { $set: { is_blackpoint_enabled } },
+      { $set: updateData },
       { new: true }
     ).lean();
 
@@ -182,7 +190,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Black Point module ${is_blackpoint_enabled ? "enabled" : "disabled"} for ${updated.name}.`,
+      message: "Organization updated successfully.",
       data: updated,
     });
   } catch (error: any) {

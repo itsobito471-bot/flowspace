@@ -5,6 +5,7 @@ import dbConnect from "./mongodb";
 import { User } from "./models/User";
 import "./models/Role"; // required so Mongoose registers the Role schema for .populate()
 import "./models/Organization"; // ensure Organization schema is registered
+import { Organization } from "./models/Organization";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -25,6 +26,9 @@ export const authOptions: NextAuthOptions = {
 
         if (!user || !user.passwordHash) {
           throw new Error("User not found");
+        }
+        if (user.organization_id && (user.organization_id as any).status === "SUSPENDED") {
+          throw new Error("Your organization's account has been suspended. Please contact support.");
         }
 
         const isPasswordCorrect = await bcrypt.compare(credentials.password, user.passwordHash);
@@ -75,6 +79,19 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).orgId = token.orgId as string | null;
         session.user.image = token.picture as string || null;
       }
+
+
+      if (token.orgId) {
+        await dbConnect();
+        const org = await Organization.findById(token.orgId).select("status").lean();
+        if (org && org.status === "SUSPENDED") {
+          session.user = undefined as any;
+          (session as any).error = "SUSPENDED";
+        }
+
+
+      }
+      console.log("inside here")
       return session;
     }
   },
