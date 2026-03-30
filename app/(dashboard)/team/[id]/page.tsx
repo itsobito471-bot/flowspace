@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronLeft, Loader2, Calendar as CalendarIcon, FileText, CheckSquare, CheckCircle2, XCircle, Clock, DollarSign, Plus, ShieldAlert } from "lucide-react";
+import { ChevronLeft, Loader2, Calendar as CalendarIcon, FileText, CheckSquare, CheckCircle2, XCircle, Clock, DollarSign, Plus, ShieldAlert, Trash2, AlertTriangle, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CalendarView from "@/components/CalendarView";
 import PayrollSection from "@/src/components/employee/PayrollSection";
@@ -18,7 +18,7 @@ interface EmployeeDetails {
     title: string;
     department: string;
     level: string;
-} | null;
+  } | null;
 }
 
 function EmployeeLeavesTab({ employeeId }: { employeeId: string }) {
@@ -56,7 +56,7 @@ function EmployeeLeavesTab({ employeeId }: { employeeId: string }) {
               REJECTED: "bg-red-500/10 text-red-400 border-red-500/20",
             };
             const StatusIcon = leave.status === "APPROVED" ? CheckCircle2 : leave.status === "REJECTED" ? XCircle : Clock;
-            
+
             return (
               <tr key={leave._id} className="border-b border-muted/10 hover:bg-muted/5 transition-colors">
                 <td className="px-5 py-4 min-w-[150px]">
@@ -167,24 +167,55 @@ function AddDemeritModal({ open, onClose, employeeId, onCreated }: {
 // ─────────────────────────────────────────────────────────────────────────────
 // Employee Demerits Tab
 // ─────────────────────────────────────────────────────────────────────────────
-function EmployeeDemeritsTab({ employeeId, isAdmin }: { employeeId: string; isAdmin: boolean }) {
+export function EmployeeDemeritsTab({ employeeId, isAdmin }: { employeeId: string; isAdmin: boolean }) {
   const [points, setPoints] = useState<any[]>([]);
   const [totalUnresolved, setTotalUnresolved] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [demeritModalOpen, setDemeritModalOpen] = useState(false);
+
+  // 🚨 NEW: State to control the custom delete confirmation modal
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const fetchDemerits = useCallback(() => {
     setLoading(true);
     fetch(`/api/blackpoints?userId=${employeeId}`)
       .then(r => r.json())
       .then(json => {
-        if (json.success) { setPoints(json.data); setTotalUnresolved(json.totalUnresolved ?? 0); }
+        if (json.success) {
+          const activePoints = json.data.filter((p: any) => !p.is_resolved);
+          setPoints(activePoints);
+          setTotalUnresolved(json.totalUnresolved ?? 0);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [employeeId]);
 
   useEffect(() => { fetchDemerits(); }, [fetchDemerits]);
+
+  // 🚨 NEW: This function actually executes the deletion after confirmation
+  const executeDelete = async () => {
+    if (!deleteConfirmId) return;
+
+    setIsDeleting(deleteConfirmId);
+    try {
+      const res = await fetch(`/api/blackpoints/${deleteConfirmId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (json.success) {
+        fetchDemerits(); // Refresh the list
+      } else {
+        alert(json.message || "Failed to delete demerit.");
+      }
+    } catch (e) {
+      alert("Network error.");
+    } finally {
+      setIsDeleting(null);
+      setDeleteConfirmId(null); // Close the modal
+    }
+  };
 
   const typeColors: Record<string, string> = {
     AUTO_LATE: "bg-amber-400/10 text-amber-400 border-amber-400/20",
@@ -194,13 +225,64 @@ function EmployeeDemeritsTab({ employeeId, isAdmin }: { employeeId: string; isAd
 
   return (
     <div className="mt-4 space-y-4">
+      {/* ── Custom Delete Confirmation Modal ── */}
+      <AnimatePresence>
+        {deleteConfirmId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-sm bg-surface border border-muted/20 rounded-2xl p-6 shadow-2xl relative"
+            >
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="absolute top-4 right-4 text-muted hover:text-foreground transition-colors"
+                disabled={isDeleting === deleteConfirmId}
+              >
+                <X size={16} />
+              </button>
+
+              <div className="flex flex-col items-center text-center gap-4 mt-2">
+                <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                  <AlertTriangle size={24} className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Delete Demerit?</h3>
+                  <p className="text-sm text-muted mt-2 leading-relaxed">
+                    Are you sure you want to permanently remove this demerit? This action cannot be undone.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 w-full mt-4">
+                  <button
+                    onClick={() => setDeleteConfirmId(null)}
+                    disabled={isDeleting === deleteConfirmId}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-muted/20 text-muted hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={executeDelete}
+                    disabled={isDeleting === deleteConfirmId}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                  >
+                    {isDeleting === deleteConfirmId ? <Loader2 size={16} className="animate-spin" /> : "Yes, Delete"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* ────────────────────────────────────── */}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
             <ShieldAlert size={18} className="text-amber-400" />
           </div>
           <div>
-            <p className="text-xs text-muted uppercase font-bold tracking-widest">Unresolved Points</p>
+            <p className="text-xs text-muted uppercase font-bold tracking-widest">Active Demerits</p>
             <p className="text-2xl font-black text-foreground">{totalUnresolved}</p>
           </div>
         </div>
@@ -226,7 +308,7 @@ function EmployeeDemeritsTab({ employeeId, isAdmin }: { employeeId: string; isAd
       ) : points.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
           <ShieldAlert size={32} strokeWidth={1.2} />
-          <p className="text-sm">No demerit records found.</p>
+          <p className="text-sm">No active demerit records found.</p>
         </div>
       ) : (
         <div className="bg-surface border border-muted/10 rounded-2xl overflow-hidden">
@@ -238,7 +320,7 @@ function EmployeeDemeritsTab({ employeeId, isAdmin }: { employeeId: string; isAd
                   <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Type</th>
                   <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Points</th>
                   <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Reason</th>
-                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Status</th>
+                  {isAdmin && <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -250,11 +332,19 @@ function EmployeeDemeritsTab({ employeeId, isAdmin }: { employeeId: string; isAd
                     </td>
                     <td className="px-5 py-3 text-sm font-bold text-amber-400">{p.points}</td>
                     <td className="px-5 py-3 max-w-[220px]"><p className="text-xs text-foreground/80 line-clamp-2" title={p.reason}>{p.reason}</p></td>
-                    <td className="px-5 py-3">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${p.is_resolved ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
-                        {p.is_resolved ? "Resolved" : "Active"}
-                      </span>
-                    </td>
+
+                    {isAdmin && (
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          // 🚨 Only open the modal instead of calling API directly!
+                          onClick={() => setDeleteConfirmId(p._id)}
+                          className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
+                          title="Delete Demerit"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -335,7 +425,7 @@ function AddManualTimeModal({ open, onClose, employeeId, onCreated }: {
         <div className="pointer-events-auto w-full max-w-md bg-surface border border-muted/10 rounded-2xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
           <h2 className="text-lg font-bold mb-1">Add Manual Time</h2>
           <p className="text-xs text-muted mb-6">Manually log hours for this employee.</p>
-          
+
           {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl mb-4">{error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -481,7 +571,7 @@ export default function EmployeeProfilePage() {
       .then(json => {
         if (json.success) setIsBlackpointEnabled(json.data.is_blackpoint_enabled ?? false);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [id]);
 
   if (loading) {
@@ -567,11 +657,11 @@ export default function EmployeeProfilePage() {
         </div>
       </div>
 
-      <AddManualTimeModal 
-        open={manualModalOpen} 
-        onClose={() => setManualModalOpen(false)} 
-        employeeId={employee._id} 
-        onCreated={() => setRefreshKey(k => k + 1)} 
+      <AddManualTimeModal
+        open={manualModalOpen}
+        onClose={() => setManualModalOpen(false)}
+        employeeId={employee._id}
+        onCreated={() => setRefreshKey(k => k + 1)}
       />
 
       {/* Content Area */}

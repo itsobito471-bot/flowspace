@@ -48,6 +48,10 @@ export async function POST(request: Request) {
         year,
       }).lean();
 
+      if (!settings?.penalty_rules?.is_enabled) {
+        continue; // Skip this organization entirely
+      }
+
       const threshold = settings?.penalty_rules?.points_for_leave_deduction ?? 3;
 
       // ── 2. Aggregate unresolved points, grouped by user ─────────────────
