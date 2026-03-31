@@ -1,13 +1,10 @@
 import mongoose from "mongoose";
 import { Leave } from "@/src/lib/models/Leave";
 import { BlackPoint } from "@/src/lib/models/BlackPoint";
+import { Notification } from "@/src/lib/models/Notification";
+import { pusherServer } from "@/src/lib/pusher";
 
-/**
- * Shared service to compute and deduct leaves when a user reaches a penalty threshold.
- * It will find what leaf balance is remaining for the user and deduct exactly 1 day.
- * If no paid leave quota is left, it creates a Loss of Pay (LOP) record.
- * Then it marks the provided BlackPoint documents as `is_resolved: true`.
- */
+
 export async function processPenaltyDeduction(
   userId: string | mongoose.Types.ObjectId,
   orgId: string | mongoose.Types.ObjectId,
@@ -56,18 +53,36 @@ export async function processPenaltyDeduction(
   }
 
   // 2. Create the Leave Deduction Record
-  await Leave.create({
+  const leave = await Leave.create({
     user_id: userId,
     organization_id: new mongoose.Types.ObjectId(String(orgId)),
     start_date: today,
     end_date: today,
-    reason: `${reasonPrefix} (${selectedLeaveType}) for accumulating ${totalPoints} demerit points.`,
+    reason: `${reasonPrefix} (${selectedLeaveType}) for accumulating ${totalPoints} unpaid demerit points.`,
     leave_type: selectedLeaveType,
     status: "APPROVED",
     is_loss_of_pay: isLOP,
+    is_demerit_deduction: true,
   });
 
-  // 3. Resolve the contributing Black Point documents
+  // 3. Notify the user instantly!
+  const dateStr = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  try {
+    await Notification.create({
+      recipient_id: userId,
+      type: "LEAVE_APPROVED",
+      title: "Demerit Leave Deduction",
+      message: `An automatic deduction (${selectedLeaveType}) was applied on ${dateStr} due to accumulating ${totalPoints} unpaid demerit points.`,
+      link: "/leave",
+      related_id: leave._id,
+      is_read: false,
+    });
+    await pusherServer.trigger(`user-${String(userId)}`, "notification-ping", {});
+  } catch (err) {
+    console.error("[penaltyService] Failed to notify user of deduction:", err);
+  }
+
+  // 4. Resolve the contributing Black Point documents
   await BlackPoint.updateMany(
     { _id: { $in: pointIds } },
     { $set: { is_resolved: true } }

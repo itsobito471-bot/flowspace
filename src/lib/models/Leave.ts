@@ -9,6 +9,7 @@ export interface ILeave extends Document {
   status: "PENDING" | "APPROVED" | "REJECTED";
   organization_id: mongoose.Types.ObjectId;
   is_loss_of_pay: boolean;
+  is_demerit_deduction?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +33,7 @@ const LeaveSchema = new Schema<ILeave>(
      * employee has insufficient leave_quota remaining.
      */
     is_loss_of_pay: { type: Boolean, default: false },
+    is_demerit_deduction: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

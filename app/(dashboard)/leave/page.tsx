@@ -43,6 +43,7 @@ interface LeaveRequest {
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   is_loss_of_pay: boolean;
+  is_demerit_deduction?: boolean;
   createdAt: string;
 }
 
@@ -555,8 +556,12 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject }: {
           <StatusIcon size={11} />
           {leave.status}
         </span>
-        {leave.is_loss_of_pay && (
-          <span className="ml-1.5 text-[10px] text-red-400 font-semibold">LOP</span>
+        {leave.is_demerit_deduction ? (
+          <span className="ml-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            <AlertCircle size={10} /> AUTO DEDUCTION
+          </span>
+        ) : leave.is_loss_of_pay && (
+          <span className="ml-1.5 text-[10px] text-red-400 font-semibold px-2 py-0.5 rounded-full bg-red-400/10 border border-red-400/20">LOP</span>
         )}
       </td>
       {isAdmin && (leave.status === "PENDING" || leave.status === "APPROVED") ? (
