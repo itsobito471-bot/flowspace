@@ -60,13 +60,28 @@ export default function AttendanceWidget() {
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  const getCoordinates = (): Promise<{ lat: number; lng: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null), // Silently catch Denied / Error
+        { timeout: 5000, enableHighAccuracy: false } // Fast 5s timeout fallback
+      );
+    });
+  };
+
   const handleAction = async (action: "CHECK_IN" | "CHECK_OUT") => {
     setActionLoading(true);
     try {
+      const location = await getCoordinates();
       const res = await fetch("/api/attendance/today", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, location }),
       });
       const json = await res.json();
       if (!json.success) {

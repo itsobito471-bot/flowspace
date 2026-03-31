@@ -9,6 +9,7 @@ export interface IAttendance extends Document {
   status: "PRESENT" | "ABSENT" | "HALF_DAY";
   added_by: mongoose.Types.ObjectId | null;
   description: string | null;
+  location?: { lat: number | null; lng: number | null };
   organization_id: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +30,10 @@ const AttendanceSchema = new Schema<IAttendance>(
     },
     added_by: { type: Schema.Types.ObjectId, ref: "User", default: null },
     description: { type: String, default: null },
+    location: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
   },
   { timestamps: true }
 );

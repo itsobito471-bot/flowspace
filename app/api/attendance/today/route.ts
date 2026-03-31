@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
     await dbConnect();
     const body = await request.json();
-    const { action } = body; // "CHECK_IN" | "CHECK_OUT"
+    const { action, location } = body; // "CHECK_IN" | "CHECK_OUT"
 
     const userId = (session.user as any).id as string;
     const orgId = session.user.orgId as string;
@@ -141,6 +141,7 @@ export async function POST(request: Request) {
             check_in: now,
             status: "PRESENT",
             organization_id: orgId,
+            location: location || undefined,
           });
 
           const allTodayRecords = await Attendance.find({ user_id: userId, date: today }).sort({ check_in: 1 }).lean();
@@ -165,9 +166,11 @@ export async function POST(request: Request) {
           check_in: now,
           status: "PRESENT",
           organization_id: orgId,
+          location: location || undefined,
         });
       } else {
         record.check_in = now;
+        if (location) record.location = location;
         await record.save();
       }
 

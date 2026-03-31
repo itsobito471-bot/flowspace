@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import AttendanceWidget from "@/components/AttendanceWidget";
+import LiveAttendanceWidget from "@/components/dashboard/LiveAttendanceWidget";
 
 /**
  * HomePage (Dashboard)
@@ -12,6 +13,9 @@ export default async function HomePage() {
   const session = await getServerSession(authOptions);
   const name = session?.user?.name ?? "there";
   const firstName = name.split(" ")[0];
+
+  const userRole = (session?.user as any)?.role?.level;
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
   return (
     <div className="p-8 lg:p-10">
@@ -30,6 +34,13 @@ export default async function HomePage() {
         {/* Live Attendance Widget */}
         <AttendanceWidget />
       </div>
+
+      {/* Admin Live Pulse */}
+      {isAdmin && (
+        <div className="mb-10 w-full">
+          <LiveAttendanceWidget />
+        </div>
+      )}
 
       {/* ── Cards Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
