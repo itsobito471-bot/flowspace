@@ -24,8 +24,12 @@ export async function GET(request: Request) {
 
     // We save their specific Organization ID here
     const myOrgId = session.user.orgId;
+    const myUserId = (session.user as any).id;
 
-    const filter: any = { organization_id: myOrgId };
+    const filter: any = { 
+      organization_id: myOrgId,
+      _id: { $ne: myUserId }
+    };
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -35,7 +39,7 @@ export async function GET(request: Request) {
     const [users, totalCount] = await Promise.all([
       User.find(filter)
         .populate("role_id", "title department level")
-        .select("name email is_active role_id createdAt employee_id date_of_joining")
+        .select("name email is_active role_id createdAt employee_id date_of_joining avatar")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

@@ -45,6 +45,7 @@ export interface TeamMember {
   email: string;
   employee_id?: string;
   date_of_joining?: string;
+  avatar?: string;
   is_active: boolean;
   role_id: Role | null;
   createdAt: string;
@@ -419,7 +420,13 @@ function MemberRow({ member, index, onEdit, onDelete }: { member: TeamMember; in
     <motion.tr initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04, duration: 0.35, ease: "easeOut" }} className="group border-b border-muted/10 hover:bg-muted/5 transition-colors">
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${color} border border-white/10 flex items-center justify-center text-[11px] font-bold text-white shrink-0`}>{initials(member.name)}</div>
+          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${color} border border-white/10 flex items-center justify-center text-[11px] font-bold text-white shrink-0 overflow-hidden`}>
+            {member.avatar ? (
+              <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
+            ) : (
+              initials(member.name)
+            )}
+          </div>
           <div>
             <p className="text-sm font-semibold text-foreground leading-none">{member.name}</p>
             <p className="text-[11px] text-muted mt-0.5">{member.email}</p>

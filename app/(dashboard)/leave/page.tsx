@@ -502,21 +502,93 @@ function AdminActionModal({ leave, action, open, onClose, onActioned }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Reason Modal
+// ─────────────────────────────────────────────────────────────────────────────
+function ReasonModal({ leave, open, onClose }: {
+  leave: LeaveRequest | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [open, onClose]);
+
+  if (!leave) return null;
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div key="reason-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
+          <motion.div key="reason-modal" initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", stiffness: 280, damping: 28 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className="pointer-events-auto w-full max-w-lg bg-surface border border-muted/10 rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.4)] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}>
+              
+              <div className="flex items-center justify-between px-6 py-5 border-b border-muted/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-cyan/10 border border-cyan/20 flex items-center justify-center">
+                    <FileText size={13} className="text-cyan" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-foreground">Leave Reason</h2>
+                    <p className="text-[10px] text-muted">{fmt(leave.start_date)} – {fmt(leave.end_date)}</p>
+                  </div>
+                </div>
+                <button onClick={onClose} className="text-muted hover:text-foreground w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted/10 transition-all">
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="px-6 py-8">
+                <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                  {leave.reason}
+                </p>
+              </div>
+              
+              <div className="flex px-6 py-4 border-t border-muted/10 bg-muted/5">
+                <button onClick={onClose}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-foreground border border-muted/20 bg-background hover:bg-muted/5 transition-all">
+                  Close
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Leave Row Component
 // ─────────────────────────────────────────────────────────────────────────────
-function LeaveRow({ leave, isAdmin, onApprove, onReject }: {
+function LeaveRow({ leave, isAdmin, onApprove, onReject, onViewReason }: {
   leave: LeaveRequest;
   isAdmin: boolean;
   onApprove?: () => void;
   onReject?: () => void;
+  onViewReason: () => void;
 }) {
   const StatusIcon = STATUS_ICON[leave.status];
   const days = daysBetween(leave.start_date, leave.end_date);
 
+  const MAX_LENGTH = 50;
+  const isLong = leave.reason.length > MAX_LENGTH;
+  const displayReason = !isLong ? leave.reason : leave.reason.slice(0, MAX_LENGTH) + "...";
+
   return (
     <motion.tr
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-      className="group border-b border-muted/10 hover:bg-muted/5 transition-colors">
+      onClick={onViewReason}
+      title="Click row to read full reason"
+      className="group border-b border-muted/10 hover:bg-muted/5 transition-colors cursor-pointer">
       {isAdmin && (
         <td className="px-5 py-4">
           <div className="flex items-center gap-3">
@@ -548,8 +620,10 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject }: {
           )}
         </div>
       </td>
-      <td className="px-5 py-4 max-w-[200px]">
-        <p className="text-sm text-foreground/80 truncate" title={leave.reason}>{leave.reason}</p>
+      <td className="px-5 py-4 min-w-[200px] max-w-[350px]">
+        <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words leading-relaxed group-hover:text-foreground transition-colors">
+          {displayReason}
+        </p>
       </td>
       <td className="px-5 py-4">
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${STATUS_STYLES[leave.status]}`}>
@@ -568,12 +642,14 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject }: {
         <td className="px-5 py-4">
           <div className="flex items-center gap-2">
             {leave.status === "PENDING" && (
-              <button onClick={onApprove}
+              <button 
+                onClick={(e) => { e.stopPropagation(); onApprove?.(); }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold transition-all">
                 <Check size={11} /> Approve
               </button>
             )}
-            <button onClick={onReject}
+            <button 
+              onClick={(e) => { e.stopPropagation(); onReject?.(); }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[11px] font-bold transition-all">
               <Ban size={11} /> {leave.status === "APPROVED" ? "Revoke" : "Reject"}
             </button>
@@ -612,6 +688,7 @@ function LeavePageInner() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [actionLeave, setActionLeave] = useState<LeaveRequest | null>(null);
   const [actionType, setActionType] = useState<"APPROVED" | "REJECTED" | null>(null);
+  const [reasonLeave, setReasonLeave] = useState<LeaveRequest | null>(null);
 
   // NEW: Updated to hold the array of balances
   const [myBalance, setMyBalance] = useState<UserBalanceData | null>(null);
@@ -699,6 +776,11 @@ function LeavePageInner() {
         open={!!actionLeave}
         onClose={() => { setActionLeave(null); setActionType(null); }}
         onActioned={handleActioned}
+      />
+      <ReasonModal
+        leave={reasonLeave}
+        open={!!reasonLeave}
+        onClose={() => setReasonLeave(null)}
       />
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
@@ -840,6 +922,7 @@ function LeavePageInner() {
                       isAdmin={isAdmin}
                       onApprove={() => { setActionLeave(leave); setActionType("APPROVED"); }}
                       onReject={() => { setActionLeave(leave); setActionType("REJECTED"); }}
+                      onViewReason={() => setReasonLeave(leave)}
                     />
                   ))}
                 </tbody>

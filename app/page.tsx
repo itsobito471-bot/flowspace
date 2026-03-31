@@ -180,18 +180,20 @@ export default function LoginPage() {
               </div>
 
               <div className="pt-4">
-                <div className="relative rounded-full p-[2px] overflow-hidden group/btn cursor-pointer">
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="relative rounded-full p-[2px] overflow-hidden group/btn cursor-pointer"
+                >
                   {/* Dashed animated border effect */}
                   <div className="absolute inset-0 border border-cyan/50 border-dashed rounded-full group-hover/btn:rotate-180 transition-all duration-1000 ease-linear" />
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  <button
                     type="submit"
-                    className="relative w-full bg-white text-black font-semibold rounded-full px-4 py-3.5 hover:bg-white/90 transition-opacity"
+                    className="relative w-full bg-foreground text-background font-semibold rounded-full px-4 py-3.5 hover:opacity-90 transition-opacity"
                   >
                     Login to Workspace
-                  </motion.button>
-                </div>
+                  </button>
+                </motion.div>
               </div>
 
               <div className="text-center pt-6">

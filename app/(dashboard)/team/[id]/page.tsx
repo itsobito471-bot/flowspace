@@ -14,6 +14,7 @@ interface EmployeeDetails {
   _id: string;
   name: string;
   email: string;
+  avatar?: string;
   role_id: {
     title: string;
     department: string;
@@ -597,8 +598,12 @@ export default function EmployeeProfilePage() {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan/20 to-violet/20 border border-cyan/20 flex items-center justify-center text-xl font-black text-cyan shadow-sm">
-              {employee.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan/20 to-violet/20 border border-cyan/20 flex items-center justify-center text-xl font-black text-cyan shadow-sm overflow-hidden">
+              {employee.avatar ? (
+                <img src={employee.avatar} alt={employee.name} className="w-full h-full object-cover" />
+              ) : (
+                employee.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+              )}
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight">{employee.name}</h1>
