@@ -9,6 +9,8 @@ import "@/src/lib/models/Role";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import { Holiday } from "@/src/lib/models/Holiday";
 
+import { pusherServer } from "@/src/lib/pusher";
+
 // ── GET /api/leave ───────────────────────────────────────────────────────────
 // Employee: returns own leaves (paginated)
 // Admin: returns all leaves (paginated with balance for each request), supports ?status= filter
@@ -238,9 +240,19 @@ export async function POST(request: Request) {
         related_id: leave._id,
         is_read: false,
       }));
-      Notification.insertMany(notifications).catch((e) =>
-        console.error("[POST /api/leave] notify error", e)
-      );
+      
+      (async () => {
+        try {
+          await Notification.insertMany(notifications);
+          await Promise.all(
+            adminUsers.map((admin: any) =>
+              pusherServer.trigger(`user-${admin._id}`, "notification-ping", {})
+            )
+          );
+        } catch (e) {
+          console.error("[POST /api/leave] notify error", e);
+        }
+      })();
     }
 
     return NextResponse.json(

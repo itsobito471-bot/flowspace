@@ -4,6 +4,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Bell, Check, CheckCheck, Calendar, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { pusherClient } from "@/src/lib/pusherClient";
 
 interface AppNotification {
   _id: string;
@@ -40,6 +42,9 @@ export default function NotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  const { data: session } = useSession();
+  const userId = (session?.user as any)?.id;
+
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications");
@@ -53,11 +58,27 @@ export default function NotificationBell() {
     }
   }, []);
 
+  // Initial fetch
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Subscribe to real-time pings
+  useEffect(() => {
+    if (!userId) return;
+
+    const channelName = `user-${userId}`;
+    const channel = pusherClient.subscribe(channelName);
+
+    channel.bind("notification-ping", () => {
+      fetchNotifications();
+    });
+
+    return () => {
+      channel.unbind("notification-ping");
+      pusherClient.unsubscribe(channelName);
+    };
+  }, [userId, fetchNotifications]);
 
   // Close on outside click
   useEffect(() => {

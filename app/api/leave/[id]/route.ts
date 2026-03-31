@@ -7,6 +7,8 @@ import { Notification } from "@/src/lib/models/Notification";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import mongoose from "mongoose";
 
+import { pusherServer } from "@/src/lib/pusher";
+
 // PATCH /api/leave/[id] — Admin approves or rejects a leave request
 // Also returns the requesting employee's balance in the response
 // so the frontend can update without a separate fetch.
@@ -122,18 +124,25 @@ export async function PATCH(
       ]).exec(),
 
       // Fire-and-forget notification
-      Notification.create({
-        recipient_id: user._id,
-        type:         status === "APPROVED" ? "LEAVE_APPROVED" : "LEAVE_REJECTED",
-        title:        status === "APPROVED" ? "Leave Approved ✓" : "Leave Rejected",
-        message:
-          status === "APPROVED"
-            ? `Your leave request (${startStr} – ${endStr}) has been approved by ${adminName}.`
-            : `Your leave request (${startStr} – ${endStr}) was rejected by ${adminName}.`,
-        link:         "/leave",
-        related_id:   leave._id,
-        is_read:      false,
-      }).catch((e: any) => console.error("[PATCH /api/leave/[id]] notify error", e)),
+      (async () => {
+        try {
+          await Notification.create({
+            recipient_id: user._id,
+            type:         status === "APPROVED" ? "LEAVE_APPROVED" : "LEAVE_REJECTED",
+            title:        status === "APPROVED" ? "Leave Approved ✓" : "Leave Rejected",
+            message:
+              status === "APPROVED"
+                ? `Your leave request (${startStr} – ${endStr}) has been approved by ${adminName}.`
+                : `Your leave request (${startStr} – ${endStr}) was rejected by ${adminName}.`,
+            link:         "/leave",
+            related_id:   leave._id,
+            is_read:      false,
+          });
+          await pusherServer.trigger(`user-${user._id}`, "notification-ping", {});
+        } catch (e) {
+          console.error("[PATCH /api/leave/[id]] notify error", e);
+        }
+      })(),
     ]);
 
     const quota       = (settingsDoc as any)?.annual_leave_quota ?? 20;
