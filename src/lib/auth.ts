@@ -91,7 +91,7 @@ export const authOptions: NextAuthOptions = {
 
 
       }
-      console.log("inside here")
+      // console.log("inside here")
       return session;
     }
   },
