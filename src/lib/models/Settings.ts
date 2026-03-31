@@ -20,10 +20,16 @@ export interface ICompanySettings extends Document {
   overtime_hourly_rate: number;
   organization_id: mongoose.Types.ObjectId;
   penalty_rules: {
-    is_enabled: boolean;
+    attendance_penalty_enabled: boolean;
+    manual_penalty_enabled: boolean;
     late_grace_period_mins: number;
     early_checkout_grace_period_mins: number;
-    points_for_leave_deduction: number;
+    attendance_points_for_leave_deduction: number;
+    manual_points_for_leave_deduction: number;
+    
+    // Legacy fields for backward compatibility
+    is_enabled?: boolean;
+    points_for_leave_deduction?: number;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -60,10 +66,12 @@ const CompanySettingsSchema = new Schema<ICompanySettings>(
     overtime_hourly_rate: { type: Number, default: 0 },
     organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
     penalty_rules: {
-      is_enabled: { type: Boolean, default: false },
+      attendance_penalty_enabled: { type: Boolean, default: false },
+      manual_penalty_enabled: { type: Boolean, default: false },
       late_grace_period_mins: { type: Number, default: 15 },
       early_checkout_grace_period_mins: { type: Number, default: 15 },
-      points_for_leave_deduction: { type: Number, default: 3 }, // e.g., 3 points = 1 Loss of Pay day
+      attendance_points_for_leave_deduction: { type: Number, default: 3 },
+      manual_points_for_leave_deduction: { type: Number, default: 3 },
     },
   },
   { timestamps: true }

@@ -32,10 +32,12 @@ export default function SettingsPage() {
 
   // Penalty / Black Point rules
   const [isBlackpointEnabled, setIsBlackpointEnabled] = useState(false); // org-level gate
-  const [penaltyEnabled, setPenaltyEnabled] = useState(false);
+  const [attendancePenaltyEnabled, setAttendancePenaltyEnabled] = useState(false);
+  const [manualPenaltyEnabled, setManualPenaltyEnabled] = useState(false);
   const [lateGraceMins, setLateGraceMins] = useState(15);
   const [earlyCheckoutGraceMins, setEarlyCheckoutGraceMins] = useState(15);
-  const [pointsForLeaveDeduction, setPointsForLeaveDeduction] = useState(3);
+  const [attendancePointsForLeave, setAttendancePointsForLeave] = useState(3);
+  const [manualPointsForLeave, setManualPointsForLeave] = useState(3);
 
   useEffect(() => {
     if (status !== "authenticated" || !isAdmin) return;
@@ -59,10 +61,12 @@ export default function SettingsPage() {
 
         // Penalty rules
         const pr = j.data.settings.penalty_rules || {};
-        setPenaltyEnabled(pr.is_enabled || false);
+        setAttendancePenaltyEnabled(pr.attendance_penalty_enabled ?? false);
+        setManualPenaltyEnabled(pr.manual_penalty_enabled ?? false);
         setLateGraceMins(pr.late_grace_period_mins ?? 15);
         setEarlyCheckoutGraceMins(pr.early_checkout_grace_period_mins ?? 15);
-        setPointsForLeaveDeduction(pr.points_for_leave_deduction ?? 3);
+        setAttendancePointsForLeave(pr.attendance_points_for_leave_deduction ?? 3);
+        setManualPointsForLeave(pr.manual_points_for_leave_deduction ?? 3);
 
         // Map specific rules into array of "day-week" strings
         const rules: string[] = [];
@@ -169,10 +173,12 @@ export default function SettingsPage() {
           is_overtime_applicable: isOvertime,
           overtime_hourly_rate: overtimeRate,
           penalty_rules: {
-            is_enabled: penaltyEnabled,
+            attendance_penalty_enabled: attendancePenaltyEnabled,
+            manual_penalty_enabled: manualPenaltyEnabled,
             late_grace_period_mins: lateGraceMins,
             early_checkout_grace_period_mins: earlyCheckoutGraceMins,
-            points_for_leave_deduction: pointsForLeaveDeduction,
+            attendance_points_for_leave_deduction: attendancePointsForLeave,
+            manual_points_for_leave_deduction: manualPointsForLeave,
           },
         }),
       });
@@ -371,63 +377,95 @@ export default function SettingsPage() {
               <h2 className="text-lg font-bold text-foreground">Demerit Penalty Rules</h2>
             </div>
             <p className="text-sm text-muted mb-4">
-              Automatically issue demerit points for late check-ins or early check-outs.
-              Requires the Black Point module to be enabled by your Super Admin first.
+              Configure independent rules for Automated Attendance Demerits and Externally Added (Manual) Demerits.
             </p>
 
-            <div className="bg-background rounded-xl border border-muted/10 p-4 space-y-5">
-              {/* Master toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-sm text-foreground">Enable Automated Demerit Points</p>
-                  <p className="text-xs text-muted mt-0.5">Late arrivals and early departures will automatically earn a demerit.</p>
+            <div className="space-y-4">
+              {/* Box 1: Automated Attendance */}
+              <div className="bg-background rounded-xl border border-muted/10 p-4 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-sm text-foreground">Automated Attendance Demerits</p>
+                    <p className="text-xs text-muted mt-0.5">Demerits issued automatically by the system for late arrivals and early departures.</p>
+                  </div>
+                  <button
+                    onClick={() => setAttendancePenaltyEnabled(p => !p)}
+                    className={`w-12 h-6 rounded-full relative transition-colors ${attendancePenaltyEnabled ? "bg-amber-400" : "bg-muted/30"}`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${attendancePenaltyEnabled ? "left-7" : "left-1"}`} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setPenaltyEnabled(p => !p)}
-                  className={`w-12 h-6 rounded-full relative transition-colors ${penaltyEnabled ? "bg-amber-400" : "bg-muted/30"}`}
-                >
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${penaltyEnabled ? "left-7" : "left-1"}`} />
-                </button>
+
+                <AnimatePresence>
+                  {attendancePenaltyEnabled && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                      className="pt-4 border-t border-muted/10 grid grid-cols-1 sm:grid-cols-3 gap-4 overflow-hidden"
+                    >
+                      <div>
+                        <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Late Grace (mins)</label>
+                        <input
+                          type="number" min="0" value={lateGraceMins}
+                          onChange={e => setLateGraceMins(Number(e.target.value))}
+                          className="w-full bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-amber-400 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Early Checkout Grace (mins)</label>
+                        <input
+                          type="number" min="0" value={earlyCheckoutGraceMins}
+                          onChange={e => setEarlyCheckoutGraceMins(Number(e.target.value))}
+                          className="w-full bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-amber-400 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Threshold (Leaves)</label>
+                        <input
+                          type="number" min="1" value={attendancePointsForLeave}
+                          onChange={e => setAttendancePointsForLeave(Number(e.target.value))}
+                          className="w-full bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-amber-400 transition-all"
+                        />
+                        <p className="text-[9px] text-muted mt-1 leading-tight">Unresolved points needed for 1 deduction.</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
-              <AnimatePresence>
-                {penaltyEnabled && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="pt-4 border-t border-muted/10 grid grid-cols-1 sm:grid-cols-3 gap-4 overflow-hidden"
+              {/* Box 2: Manual External */}
+              <div className="bg-background rounded-xl border border-muted/10 p-4 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-sm text-foreground">Externally Added (Manual) Demerits</p>
+                    <p className="text-xs text-muted mt-0.5">Demerits added manually by admins through the API/Dashboard.</p>
+                  </div>
+                  <button
+                    onClick={() => setManualPenaltyEnabled(p => !p)}
+                    className={`w-12 h-6 rounded-full relative transition-colors ${manualPenaltyEnabled ? "bg-amber-400" : "bg-muted/30"}`}
                   >
-                    <div>
-                      <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Late Grace Period (mins)</label>
-                      <input
-                        type="number" min="0" value={lateGraceMins}
-                        onChange={e => setLateGraceMins(Number(e.target.value))}
-                        className="w-full bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-amber-400 transition-all"
-                      />
-                      <p className="text-[10px] text-muted mt-1">Check-in within this window is not penalized.</p>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Early Checkout Grace (mins)</label>
-                      <input
-                        type="number" min="0" value={earlyCheckoutGraceMins}
-                        onChange={e => setEarlyCheckoutGraceMins(Number(e.target.value))}
-                        className="w-full bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-amber-400 transition-all"
-                      />
-                      <p className="text-[10px] text-muted mt-1">Check-out within this window before end time is not penalized.</p>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Points for 1 Loss-of-Pay Day</label>
-                      <input
-                        type="number" min="1" value={pointsForLeaveDeduction}
-                        onChange={e => setPointsForLeaveDeduction(Number(e.target.value))}
-                        className="w-full bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-amber-400 transition-all"
-                      />
-                      <p className="text-[10px] text-muted mt-1">Unresolved points needed to trigger 1 LOP deduction.</p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${manualPenaltyEnabled ? "left-7" : "left-1"}`} />
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {manualPenaltyEnabled && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                      className="pt-4 border-t border-muted/10 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-hidden"
+                    >
+                      <div>
+                        <label className="text-[10px] font-bold tracking-widest uppercase text-muted/80 block mb-1">Threshold (Leaves)</label>
+                        <input
+                          type="number" min="1" value={manualPointsForLeave}
+                          onChange={e => setManualPointsForLeave(Number(e.target.value))}
+                          className="w-full bg-surface border border-muted/20 rounded-xl px-4 py-2.5 text-foreground font-bold focus:outline-none focus:border-amber-400 transition-all"
+                        />
+                        <p className="text-[9px] text-muted mt-1 leading-tight">Unresolved manual points needed to instantly trigger 1 deduction.</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </section>
           )}

@@ -16,6 +16,7 @@ import { BlackPoint } from "@/src/lib/models/BlackPoint";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import { Organization } from "@/src/lib/models/Organization";
 import { Leave } from "@/src/lib/models/Leave";
+import { processPenaltyDeduction } from "@/src/lib/services/penaltyService";
 import mongoose from "mongoose";
 
 export async function POST(request: Request) {
@@ -48,13 +49,15 @@ export async function POST(request: Request) {
         year,
       }).lean();
 
-      if (!settings?.penalty_rules?.is_enabled) {
-        continue; // Skip this organization entirely
+      // Fallback to legacy config or specific attendance config
+      const isEnabled = settings?.penalty_rules?.attendance_penalty_enabled ?? settings?.penalty_rules?.is_enabled ?? false;
+      const threshold = settings?.penalty_rules?.attendance_points_for_leave_deduction ?? settings?.penalty_rules?.points_for_leave_deduction ?? 3;
+
+      if (!isEnabled) {
+        continue; // Skip this organization entirely for attendance
       }
 
-      const threshold = settings?.penalty_rules?.points_for_leave_deduction ?? 3;
-
-      // ── 2. Aggregate unresolved points, grouped by user ─────────────────
+      // ── 2. Aggregate unresolved Attendance points, grouped by user ─────────────────
       const aggregated = await BlackPoint.aggregate<{
         _id: mongoose.Types.ObjectId;          // user_id
         totalPoints: number;
@@ -64,6 +67,8 @@ export async function POST(request: Request) {
           $match: {
             organization_id: new mongoose.Types.ObjectId(orgId),
             is_resolved: false,
+            // Only auto attendance types
+            type: { $in: ["AUTO_LATE", "AUTO_EARLY_CHECKOUT"] },
           },
         },
         {
@@ -78,79 +83,20 @@ export async function POST(request: Request) {
         },
       ]);
 
+      const availableLeaveTypes = settings?.leave_types || [];
+
       for (const userAgg of aggregated) {
         const userId = userAgg._id;
 
-        // ── 3. Create an auto "Loss of Pay" leave record for 1 day ────────
-        // const today = new Date();
-        // today.setUTCHours(0, 0, 0, 0);
-
-        // await Leave.create({
-        //   user_id: userId,
-        //   organization_id: new mongoose.Types.ObjectId(orgId),
-        //   start_date: today,
-        //   end_date: today,
-        //   reason: `Automatic Loss of Pay deduction for accumulating ${userAgg.totalPoints} demerit points (threshold: ${threshold}).`,
-        //   leave_type: "Loss of Pay",
-        //   status: "APPROVED",          // auto-approved
-        //   is_loss_of_pay: true,
-        // });
-
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);
-        const startOfYear = new Date(Date.UTC(year, 0, 1));
-        const endOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
-
-        const takenLeaves = await Leave.find({
-          user_id: userId,
-          organization_id: new mongoose.Types.ObjectId(orgId),
-          status: "APPROVED",
-          is_loss_of_pay: { $ne: true }, // Only count their actual paid time off
-          start_date: { $gte: startOfYear, $lte: endOfYear }
-        }).lean();
-
-        const takenCounts: Record<string, number> = {};
-        for (const l of takenLeaves) {
-          // Simple math to count days of each approved leave
-          const days = Math.round((new Date(l.end_date).getTime() - new Date(l.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-          takenCounts[l.leave_type] = (takenCounts[l.leave_type] || 0) + days;
-        }
-
-        const availableLeaveTypes = settings?.leave_types || [];
-
-        let selectedLeaveType = "Loss of Pay"; // Default to punishment
-        let isLOP = true;
-
-        for (const lt of availableLeaveTypes) {
-          const name = lt.name;
-          const quota = lt.quota;
-
-          const taken = takenCounts[name] || 0;
-
-          // Do they have a balance remaining for this specific leave type?
-          if (taken < quota) {
-            selectedLeaveType = name; // We found a paid leave to use!
-            isLOP = false;            // Spare them from Loss of Pay!
-            break;                    // Stop looking, we found our deduction target.
-          }
-        }
-
-        // D. Create the actual Leave Deduction Record
-        await Leave.create({
-          user_id: userId,
-          organization_id: new mongoose.Types.ObjectId(orgId),
-          start_date: today,
-          end_date: today,
-          reason: `Automatic deduction (${selectedLeaveType}) for accumulating ${userAgg.totalPoints} demerit points.`,
-          leave_type: selectedLeaveType,
-          status: "APPROVED",
-          is_loss_of_pay: isLOP,
-        });
-
-        // ── 4. Resolve the contributing Black Point documents ─────────────
-        await BlackPoint.updateMany(
-          { _id: { $in: userAgg.pointIds } },
-          { $set: { is_resolved: true } }
+        // ── 3. Deduct via shared service ──────────────────────────────
+        await processPenaltyDeduction(
+          userId.toString(),
+          orgId,
+          userAgg.totalPoints,
+          userAgg.pointIds,
+          year,
+          availableLeaveTypes,
+          "Automatic deduction"
         );
 
         totalResolved += userAgg.pointIds.length;

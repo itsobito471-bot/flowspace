@@ -46,6 +46,22 @@ export async function GET(request: Request) {
       date: { $gte: startOfYear, $lte: endOfYear }
     }).sort({ date: 1 }).lean();
 
+    // Handle legacy penalty rules backward compatibility
+    if (settings && settings.penalty_rules) {
+      if (settings.penalty_rules.attendance_penalty_enabled === undefined) {
+        settings.penalty_rules.attendance_penalty_enabled = settings.penalty_rules.is_enabled ?? false;
+      }
+      if (settings.penalty_rules.manual_penalty_enabled === undefined) {
+        settings.penalty_rules.manual_penalty_enabled = settings.penalty_rules.is_enabled ?? false;
+      }
+      if (settings.penalty_rules.attendance_points_for_leave_deduction === undefined) {
+        settings.penalty_rules.attendance_points_for_leave_deduction = settings.penalty_rules.points_for_leave_deduction ?? 3;
+      }
+      if (settings.penalty_rules.manual_points_for_leave_deduction === undefined) {
+        settings.penalty_rules.manual_points_for_leave_deduction = settings.penalty_rules.points_for_leave_deduction ?? 3;
+      }
+    }
+
     // ── Include org-level feature flags so clients can gate UI without extra calls ──
     const org = await Organization.findById(orgId).select("is_blackpoint_enabled").lean();
     const is_blackpoint_enabled = org?.is_blackpoint_enabled ?? false;

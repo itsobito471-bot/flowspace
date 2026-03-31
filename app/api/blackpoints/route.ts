@@ -101,6 +101,43 @@ export async function POST(request: Request) {
       is_resolved: false,
     });
 
+    // ── Instant Deduction Engine for Manual Points ──
+    const year = new Date().getFullYear();
+    const settings = await (await import("@/src/lib/models/Settings")).CompanySettings.findOne({
+      organization_id: orgId,
+      year,
+    }).lean();
+
+    const manualEnabled = settings?.penalty_rules?.manual_penalty_enabled ?? false;
+    const manualThreshold = settings?.penalty_rules?.manual_points_for_leave_deduction ?? 3;
+
+    if (manualEnabled) {
+      const unresolvedManuals = await BlackPoint.find({
+        user_id: new mongoose.Types.ObjectId(userId),
+        organization_id: new mongoose.Types.ObjectId(orgId),
+        is_resolved: false,
+        type: "MANUAL",
+      }).lean();
+
+      const totalManualPoints = unresolvedManuals.reduce((sum, p) => sum + p.points, 0);
+
+      if (totalManualPoints >= manualThreshold) {
+        const pointIds = unresolvedManuals.map(p => p._id);
+        const availableLeaveTypes = settings?.leave_types || [];
+        
+        const { processPenaltyDeduction } = await import("@/src/lib/services/penaltyService");
+        await processPenaltyDeduction(
+          userId,
+          orgId,
+          totalManualPoints,
+          pointIds as mongoose.Types.ObjectId[],
+          year,
+          availableLeaveTypes,
+          "Manual deduction"
+        );
+      }
+    }
+
     return NextResponse.json({ success: true, data: newPoint }, { status: 201 });
   } catch (error: any) {
     console.error("[POST /api/blackpoints]", error);
