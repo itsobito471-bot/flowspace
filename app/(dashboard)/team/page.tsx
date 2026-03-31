@@ -23,8 +23,10 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  FileSpreadsheet,
 } from "lucide-react";
 import { EditEmployeeModal, EditRoleModal, DeleteModal } from "./EditModals";
+import ExportReportModal from "@/components/ExportReportModal";
 import ErrorModal from "@/components/ErrorModal";
 import TeamStatusWidget from "@/components/TeamStatusWidget";
 
@@ -544,7 +546,9 @@ export default function TeamPage() {
   const [rolesTotalCount, setRolesTotalCount] = useState(0);
 
   const userRole = (session?.user as any)?.role?.level ?? null;
-  const isAdmin = userRole === "ADMIN";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Fetch members
   const fetchMembers = useCallback((page: number) => {
@@ -655,6 +659,7 @@ export default function TeamPage() {
     <>
       <AddEmployeeModal open={empModalOpen} onClose={() => setEmpModalOpen(false)} onCreated={m => setMembers(p => [m, ...p])} />
       <CreateRoleModal open={roleModalOpen} onClose={() => setRoleModalOpen(false)} onCreated={r => setRoles(p => [r, ...p])} />
+      <ExportReportModal open={exportModalOpen} onClose={() => setExportModalOpen(false)} />
 
       {/* Edit Modals */}
       <EditEmployeeModal
@@ -710,10 +715,16 @@ export default function TeamPage() {
 
           {/* CTAs — contextual per tab */}
           {tab === "members" ? (
-            <button id="add-employee-btn" onClick={() => setEmpModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
-              <UserPlus size={15} strokeWidth={2.5} />Add Employee
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setExportModalOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface border border-muted/20 text-foreground text-sm font-semibold tracking-tight hover:bg-muted/5 transition-all duration-200">
+                <FileSpreadsheet size={15} className="text-emerald-500" /> Export
+              </button>
+              <button id="add-employee-btn" onClick={() => setEmpModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+                <UserPlus size={15} strokeWidth={2.5} />Add Employee
+              </button>
+            </div>
           ) : (
             <button id="create-role-btn" onClick={() => setRoleModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
