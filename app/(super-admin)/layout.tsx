@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/src/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Building2, LogOut, Zap, CreditCard, Menu } from "lucide-react";
+import { Building2, LogOut, Zap, CreditCard, Menu, MessageSquareQuote, HelpCircle } from "lucide-react";
 
 export default async function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -43,6 +43,14 @@ export default async function SuperAdminLayout({ children }: { children: React.R
             <CreditCard size={13} style={{ color: "#892CDC" }} />
             <span className="hidden sm:block">Plans</span>
           </Link>
+          <Link href="/testimonials" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-white/5" style={{ color: "#E8E8F0" }}>
+            <MessageSquareQuote size={13} style={{ color: "#F5A623" }} />
+            <span className="hidden sm:block">Reviews</span>
+          </Link>
+          <Link href="/enquiries" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-white/5" style={{ color: "#E8E8F0" }}>
+            <HelpCircle size={13} style={{ color: "#10B981" }} />
+            <span className="hidden sm:block">Enquiries</span>
+          </Link>
           <Link href="/api/auth/signout" className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-white/5" style={{ color: "#666680" }}>
             <LogOut size={13} />
           </Link>
@@ -81,6 +89,14 @@ export default async function SuperAdminLayout({ children }: { children: React.R
             <Link href="/plans" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/5" style={{ color: "#E8E8F0" }}>
               <CreditCard size={15} style={{ color: "#892CDC" }} />
               Subscription Plans
+            </Link>
+            <Link href="/testimonials" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/5" style={{ color: "#E8E8F0" }}>
+              <MessageSquareQuote size={15} style={{ color: "#F5A623" }} />
+              Testimonials
+            </Link>
+            <Link href="/enquiries" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/5" style={{ color: "#E8E8F0" }}>
+              <HelpCircle size={15} style={{ color: "#10B981" }} />
+              Enquiries
             </Link>
           </nav>
 
