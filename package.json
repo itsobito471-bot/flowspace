@@ -10,6 +10,7 @@
     "seed": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
+    "@editorjs/checklist": "^1.6.0",
     "@editorjs/editorjs": "^2.31.5",
     "@editorjs/header": "^2.8.8",
     "@editorjs/list": "^2.0.9",

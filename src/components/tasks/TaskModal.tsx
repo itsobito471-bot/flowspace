@@ -213,7 +213,7 @@ export default function TaskModal({
         >
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 size={22} className="animate-spin text-violet" />
+              <Loader2 size={22} className="animate-spin text-cyan" />
             </div>
           ) : !task ? (
             <div className="flex-1 flex items-center justify-center text-muted text-sm">Task not found</div>
@@ -250,7 +250,7 @@ export default function TaskModal({
                           </span>
                         </React.Fragment>
                       ))}
-                      {savingTask && <Loader2 size={9} className="animate-spin ml-1 text-violet" />}
+                      {savingTask && <Loader2 size={9} className="animate-spin ml-1 text-cyan" />}
                     </div>
 
                     {/* Status + close row */}
@@ -362,12 +362,12 @@ export default function TaskModal({
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={spring}
                                   onClick={() => drillDown(sub)}
-                                  className="flex items-center gap-3 px-3.5 py-2.5 bg-muted/5 border border-muted/10 rounded-xl hover:border-violet/30 hover:bg-violet/5 cursor-pointer transition-all group/sub"
+                                  className="flex items-center gap-3 px-3.5 py-2.5 bg-muted/5 border border-muted/10 rounded-xl hover:border-cyan/30 hover:bg-cyan/5 cursor-pointer transition-all group/sub"
                                 >
                                   <div className="w-1.5 h-1.5 rounded-full bg-muted/30 shrink-0" />
                                   <span className="text-sm text-foreground/70 group-hover/sub:text-foreground transition-colors flex-1 truncate">{sub.title}</span>
                                   <span className="text-[9px] text-muted font-bold uppercase">{sub.status}</span>
-                                  <ChevronRight size={10} className="text-muted/30 group-hover/sub:text-violet transition-colors shrink-0" />
+                                  <ChevronRight size={10} className="text-muted/30 group-hover/sub:text-cyan transition-colors shrink-0" />
                                 </motion.div>
                               ))}
                             </div>
@@ -376,9 +376,9 @@ export default function TaskModal({
                                 value={newSubtaskTitle}
                                 onChange={e => setNewSubtaskTitle(e.target.value)}
                                 placeholder="New subtask…"
-                                className="flex-1 bg-muted/5 border border-muted/10 rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted/40 focus:outline-none focus:border-violet/40"
+                                className="flex-1 bg-muted/5 border border-muted/10 rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40"
                               />
-                              <button disabled={creatingSubtask || !newSubtaskTitle.trim()} className="p-2 bg-violet/80 rounded-xl hover:bg-violet disabled:opacity-30 transition-colors">
+                              <button disabled={creatingSubtask || !newSubtaskTitle.trim()} className="p-2 bg-cyan/80 rounded-xl hover:bg-cyan disabled:opacity-30 transition-colors">
                                 {creatingSubtask ? <Loader2 size={13} className="animate-spin text-white" /> : <Plus size={13} className="text-white" />}
                               </button>
                             </form>
@@ -420,10 +420,10 @@ export default function TaskModal({
                       <textarea
                         value={newComment} onChange={e => setNewComment(e.target.value)}
                         placeholder="Comment…" rows={2}
-                        className="w-full bg-muted/5 border border-muted/10 rounded-xl text-xs text-foreground placeholder:text-muted/40 p-3 pr-10 resize-none focus:outline-none focus:border-violet/40"
+                        className="w-full bg-muted/5 border border-muted/10 rounded-xl text-xs text-foreground placeholder:text-muted/40 p-3 pr-10 resize-none focus:outline-none focus:border-cyan/40"
                         onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePostComment(); } }}
                       />
-                      <button type="submit" disabled={postingComment || !newComment.trim()} className="absolute right-2.5 bottom-2.5 p-1.5 bg-violet/80 rounded-lg hover:bg-violet disabled:opacity-30 transition-colors">
+                      <button type="submit" disabled={postingComment || !newComment.trim()} className="absolute right-2.5 bottom-2.5 p-1.5 bg-cyan/80 rounded-lg hover:bg-cyan disabled:opacity-30 transition-colors">
                         {postingComment ? <Loader2 size={12} className="animate-spin text-white" /> : <Send size={12} className="text-white" />}
                       </button>
                     </form>
