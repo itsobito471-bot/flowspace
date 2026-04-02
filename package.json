@@ -10,6 +10,9 @@
     "seed": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
+    "@editorjs/editorjs": "^2.31.5",
+    "@editorjs/header": "^2.8.8",
+    "@editorjs/list": "^2.0.9",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

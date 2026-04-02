@@ -3,7 +3,10 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export type NotificationType =
   | "LEAVE_REQUEST"
   | "LEAVE_APPROVED"
-  | "LEAVE_REJECTED";
+  | "LEAVE_REJECTED"
+  | "TASK_ASSIGNED"
+  | "TASK_OVERDUE"
+  | "TASK_DELETED";
 
 export interface INotification extends Document {
   recipient_id: mongoose.Types.ObjectId;
@@ -22,7 +25,7 @@ const NotificationSchema = new Schema<INotification>(
     recipient_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
-      enum: ["LEAVE_REQUEST", "LEAVE_APPROVED", "LEAVE_REJECTED"],
+      enum: ["LEAVE_REQUEST", "LEAVE_APPROVED", "LEAVE_REJECTED", "TASK_ASSIGNED", "TASK_OVERDUE", "TASK_DELETED"],
       required: true,
     },
     title: { type: String, required: true },
