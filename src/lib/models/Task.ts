@@ -11,6 +11,7 @@ export interface ITask extends Document {
   start_date?: Date;
   due_date?: Date;
   status: string;
+  priority: string;
   tracked_time: number;
   createdAt: Date;
   updatedAt: Date;
@@ -38,6 +39,11 @@ const TaskSchema = new Schema<ITask>(
     status: {
       type: String,
       required: true,
+    },
+    priority: {
+      type: String,
+      enum: ["URGENT", "HIGH", "NORMAL", "LOW"],
+      default: "NORMAL",
     },
     /** tracked_time stored in seconds for precision */
     tracked_time: { type: Number, default: 0 },

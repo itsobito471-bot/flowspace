@@ -7,7 +7,7 @@ import {
   LayoutGrid, List, Plus, Search, Loader2, Lock,
   CheckCircle2, Clock, CircleDashed, Eye, ChevronRight,
   Layers, FileText, X, Sparkles, Menu, ChevronDown,
-  UserPlus, Calendar, Flag, GitMerge
+  UserPlus, Calendar, Flag, GitMerge, Trash2
 } from "lucide-react";
 import TaskModal from "@/src/components/tasks/TaskModal";
 
@@ -85,6 +85,88 @@ function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; user
   );
 }
 
+// ─── Inline priority picker ──────────────────────────────────────────────────
+function PriorityPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const priorities = [
+    { value: "URGENT", label: "Urgent", color: "text-red-500" },
+    { value: "HIGH", label: "High", color: "text-amber-500" },
+    { value: "NORMAL", label: "Normal", color: "text-blue-500" },
+    { value: "LOW", label: "Low", color: "text-slate-400" },
+  ];
+
+  const current = priorities.find(p => p.value === value) || priorities[2];
+
+  return (
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(v => !v)} className="flex items-center justify-center p-1 rounded hover:bg-muted/10 transition-colors">
+        <Flag size={12} className={current.color} />
+      </button>
+      <AnimatePresence>
+        {open && (
+           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
+            className="absolute top-full mt-1 right-0 sm:left-auto sm:right-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[120px] py-1 overflow-hidden">
+            {priorities.map(p => (
+              <button key={p.value} onClick={() => { onChange(p.value); setOpen(false); }} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${value === p.value ? "text-foreground bg-muted/5" : "text-muted"}`}>
+                <Flag size={11} className={p.color} />
+                <span className="flex-1 font-medium">{p.label}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Inline status picker ───────────────────────────────────────────────────
+function StatusPicker({ value, activeStatuses, onChange }: { value: string; activeStatuses: any[]; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const current = activeStatuses.find(s => s.name === value);
+  const hex = current ? statusColor(current.color) : "#6b7280";
+
+  return (
+    <div ref={ref} className="relative shrink-0 flex items-center justify-center p-1" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(v => !v)} className="hover:scale-110 transition-transform">
+        <div className="w-3 h-3 rounded-full border-2 transition-colors" style={{ borderColor: hex }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
+            className="absolute top-full mt-1 left-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[150px] py-1 overflow-hidden">
+            {activeStatuses.map(s => {
+              const hx = statusColor(s.color);
+              const SIcon = STATUS_ICONS[s.name] || CircleDashed;
+              return (
+                <button key={s.name} onClick={() => { onChange(s.name); setOpen(false); }} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${value === s.name ? "text-foreground bg-muted/5" : "text-muted"}`}>
+                  <SIcon size={11} style={{ color: hx }} />
+                  <span className="flex-1 font-semibold text-[10px] tracking-wider uppercase">{s.name}</span>
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Inline date picker ────────────────────────────────────────────────────────
 function DatePicker({ value, onChange }: { value: string | null; onChange: (d: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -141,11 +223,15 @@ function ApprovalScreen({ page, onApprove, onReject }: { page: any; onApprove: (
 
 // ─── List Row ────────────────────────────────────────────────────────────────
 function ListRow({
-  task, depth, activeStatuses, users, onOpen, onUpdate, allTasks, onExpand, expanded
+  task, depth, activeStatuses, users, onOpen, onUpdate, allTasks, onExpand, expanded, addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle, onDelete
 }: {
   task: any; depth: number; activeStatuses: any[]; users: any[];
   onOpen: (id: string) => void; onUpdate: (t: any) => void;
   allTasks: any[]; onExpand: (id: string) => void; expanded: Set<string>;
+  addingSubtaskFor: string | null; setAddingSubtaskFor: (id: string | null) => void;
+  handleCreateTask: (e: React.FormEvent, statusOverride?: string, parentId?: string) => Promise<void>;
+  isCreating: boolean; newTaskTitle: string; setNewTaskTitle: (v: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const subtaskCount = allTasks.filter(t => String(t.parent_task_id) === String(task._id)).length;
   const isExpanded = expanded.has(String(task._id));
@@ -180,11 +266,27 @@ function ListRow({
         </button>
 
         {/* Status dot */}
-        <div className="shrink-0 w-3 h-3 rounded-full border-2 transition-colors" style={{ borderColor: hex }} />
+        <StatusPicker value={task.status} activeStatuses={activeStatuses} onChange={(s) => patchTask({ status: s })} />
 
         {/* Title */}
-        <span className="flex-1 text-sm font-medium text-foreground truncate group-hover:text-cyan transition-colors">
+        <span className="flex-1 text-sm font-medium text-foreground truncate group-hover:text-cyan transition-colors flex items-center gap-2">
           {task.title}
+          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all gap-0.5">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setAddingSubtaskFor(String(task._id)); onExpand(String(task._id)); }} 
+              className="p-1 hover:bg-muted/10 rounded text-muted hover:text-foreground" 
+              title="Add subtask"
+            >
+              <Plus size={11} />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); if(confirm(`Delete "${task.title}" and all its subtasks?`)) onDelete(String(task._id)); }} 
+              className="p-1 hover:bg-red-500/10 rounded text-muted hover:text-red-500" 
+              title="Delete task"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
         </span>
 
         {/* Subtask badge */}
@@ -212,9 +314,9 @@ function ListRow({
           />
         </div>
 
-        {/* Priority placeholder */}
+        {/* Priority */}
         <div className="shrink-0 w-20 hidden sm:flex justify-center">
-          <Flag size={12} className="text-muted/25" />
+          <PriorityPicker value={task.priority || "NORMAL"} onChange={p => patchTask({ priority: p })} />
         </div>
       </motion.div>
 
@@ -234,9 +336,25 @@ function ListRow({
               allTasks={allTasks}
               onExpand={onExpand}
               expanded={expanded}
+              addingSubtaskFor={addingSubtaskFor}
+              setAddingSubtaskFor={setAddingSubtaskFor}
+              handleCreateTask={handleCreateTask}
+              isCreating={isCreating}
+              newTaskTitle={newTaskTitle}
+              setNewTaskTitle={setNewTaskTitle}
+              onDelete={onDelete}
             />
           ))
         }
+        {isExpanded && addingSubtaskFor === String(task._id) && (
+           <div className={`flex items-center gap-2 px-3 py-2 border-b border-muted/5 group`} style={{ paddingLeft: (depth + 1) * 24 + 12 }}>
+             <form onSubmit={e => handleCreateTask(e, task.status, String(task._id))} className="flex items-center gap-2 flex-1">
+               <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Subtask name…" className="flex-1 text-sm bg-transparent text-foreground placeholder:text-muted/40 focus:outline-none" />
+               <button type="button" onClick={() => { setAddingSubtaskFor(null); setNewTaskTitle(""); }} className="p-1.5 rounded hover:bg-muted/10 text-muted"><X size={12} /></button>
+               <button disabled={isCreating || !newTaskTitle.trim()} className="p-1.5 btn-primary rounded disabled:opacity-40"><Plus size={12} /></button>
+             </form>
+           </div>
+        )}
       </AnimatePresence>
     </>
   );
@@ -244,11 +362,17 @@ function ListRow({
 
 // ─── Grouped List View ────────────────────────────────────────────────────────
 function GroupedListView({
-  tasks, activeStatuses, users, onOpen, onTaskUpdated, onAddTask
+  tasks, activeStatuses, users, onOpen, onTaskUpdated,
+  addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle,
+  addingForStatus, setAddingForStatus, onDelete
 }: {
   tasks: any[]; activeStatuses: any[]; users: any[];
   onOpen: (id: string) => void; onTaskUpdated: (t: any) => void;
-  onAddTask: (status: string) => void;
+  addingSubtaskFor: string | null; setAddingSubtaskFor: (id: string | null) => void;
+  handleCreateTask: (e: React.FormEvent, statusOverride?: string, parentId?: string) => Promise<void>;
+  isCreating: boolean; newTaskTitle: string; setNewTaskTitle: (v: string) => void;
+  addingForStatus: string | null; setAddingForStatus: (status: string | null) => void;
+  onDelete: (id: string) => void;
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -268,9 +392,9 @@ function GroupedListView({
         const colTasks = rootTasks.filter(t => (t.status || "TODO") === col.name);
         const isCollapsed = collapsedGroups.has(col.name);
         return (
-          <div key={col.name} className="rounded-xl border border-muted/10 overflow-hidden bg-surface/40">
+          <div key={col.name} className="rounded-xl border border-muted/10 bg-surface/40">
             {/* Group header */}
-            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-muted/[0.03] border-b border-muted/10">
+            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-muted/[0.03] border-b border-muted/10 rounded-t-xl">
               <button onClick={() => toggleGroup(col.name)} className="flex items-center gap-2 flex-1 min-w-0">
                 <motion.div animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.15 }}>
                   <ChevronDown size={13} className="text-muted shrink-0" />
@@ -306,17 +430,34 @@ function GroupedListView({
                     allTasks={tasks}
                     onExpand={toggleExpand}
                     expanded={expanded}
+                    addingSubtaskFor={addingSubtaskFor}
+                    setAddingSubtaskFor={setAddingSubtaskFor}
+                    handleCreateTask={handleCreateTask}
+                    isCreating={isCreating}
+                    newTaskTitle={newTaskTitle}
+                    setNewTaskTitle={setNewTaskTitle}
+                    onDelete={onDelete}
                   />
                 ))}
 
                 {/* Add task inline */}
-                <button
-                  onClick={() => onAddTask(col.name)}
-                  className="flex items-center gap-2 px-4 py-2 text-xs text-muted/50 hover:text-muted hover:bg-muted/5 transition-colors w-full border-t border-muted/5"
-                >
-                  <Plus size={11} />
-                  Add Task
-                </button>
+                {addingForStatus === col.name ? (
+                  <div className="flex items-center gap-2 px-4 py-2 border-t border-muted/5 bg-muted/[0.02] rounded-b-xl">
+                    <form onSubmit={e => handleCreateTask(e, col.name)} className="flex items-center gap-2 flex-1">
+                      <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Task name…" className="flex-1 text-sm bg-transparent text-foreground placeholder:text-muted/40 focus:outline-none" />
+                      <button type="button" onClick={() => { setAddingForStatus(null); setNewTaskTitle(""); }} className="p-1.5 rounded hover:bg-muted/10 text-muted"><X size={12} /></button>
+                      <button disabled={isCreating || !newTaskTitle.trim()} className="p-1.5 btn-primary rounded disabled:opacity-40"><Plus size={12} /></button>
+                    </form>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingForStatus(col.name)}
+                    className="flex items-center gap-2 px-4 py-2 text-xs text-muted/50 hover:text-muted hover:bg-muted/5 transition-colors w-full border-t border-muted/5 rounded-b-xl"
+                  >
+                    <Plus size={11} />
+                    Add Task
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -353,6 +494,7 @@ export default function TasksPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [addingForStatus, setAddingForStatus] = useState<string | null>(null);
+  const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
 
   const [isCreateBoardOpen, setIsCreateBoardOpen] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
@@ -425,21 +567,31 @@ export default function TasksPage() {
     setSelectedPageId(next?._id || null); setSelectedPage(next);
   };
 
-  const handleCreateTask = async (e: React.FormEvent, statusOverride?: string) => {
+  const handleCreateTask = async (e: React.FormEvent, statusOverride?: string, parentId?: string) => {
     e.preventDefault();
     if (!newTaskTitle.trim() || !selectedBoardId || !selectedPageId) return;
     setIsCreating(true);
     const board = boards.find(b => b._id === selectedBoardId);
     const status = statusOverride || board?.statuses?.[0]?.name || "TODO";
-    const res = await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: newTaskTitle, board_id: selectedBoardId, page_id: selectedPageId, status }) });
+    
+    const body: any = { title: newTaskTitle, board_id: selectedBoardId, page_id: selectedPageId, status };
+    if (parentId) body.parent_task_id = parentId;
+
+    const res = await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const json = await res.json();
-    if (json.success) { setTasks(prev => [json.data, ...prev]); setNewTaskTitle(""); setAddingForStatus(null); }
+    if (json.success) { setTasks(prev => [json.data, ...prev]); setNewTaskTitle(""); setAddingForStatus(null); setAddingSubtaskFor(null); }
     setIsCreating(false);
   };
 
   const handleTaskUpdated = (updatedTask: any) => {
     if (updatedTask.deleted) setTasks(prev => prev.filter(t => String(t._id) !== String(updatedTask._id)));
     else setTasks(prev => prev.map(t => String(t._id) === String(updatedTask._id) ? updatedTask : t));
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    const json = await res.json();
+    if (json.success) setTasks(prev => prev.filter(t => String(t._id) !== id && String(t.parent_task_id) !== id));
   };
 
   const activeStatuses = boards.find(b => b._id === selectedBoardId)?.statuses || [];
@@ -583,34 +735,6 @@ export default function TasksPage() {
               )
           ) : (
             <>
-              {/* Add task bar */}
-              {selectedPageId && !addingForStatus && (
-                <div className="shrink-0 px-4 pt-3 pb-2">
-                  <form onSubmit={handleCreateTask} className="flex items-center gap-2 max-w-lg">
-                    <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="+ Add a task…" className="flex-1 bg-muted/5 border border-muted/15 rounded-xl px-4 py-2 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40 transition-all" />
-                    <button disabled={isCreating || !newTaskTitle.trim()} className="p-2 btn-primary rounded-xl disabled:opacity-40 shrink-0">
-                      {isCreating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* Quick-add for status group */}
-              {addingForStatus && (
-                <div className="shrink-0 px-4 pt-3 pb-2">
-                  <form onSubmit={e => handleCreateTask(e, addingForStatus)} className="flex items-center gap-2 max-w-lg">
-                    <div className="flex-1 flex items-center gap-2 bg-muted/5 border border-muted/15 rounded-xl px-4 py-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted/60">{addingForStatus}:</span>
-                      <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Task name…" className="flex-1 text-sm bg-transparent text-foreground placeholder:text-muted/40 focus:outline-none" />
-                    </div>
-                    <button type="button" onClick={() => { setAddingForStatus(null); setNewTaskTitle(""); }} className="p-2 rounded-xl hover:bg-muted/10 text-muted"><X size={14} /></button>
-                    <button disabled={isCreating || !newTaskTitle.trim()} className="p-2 btn-primary rounded-xl disabled:opacity-40 shrink-0">
-                      {isCreating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-                    </button>
-                  </form>
-                </div>
-              )}
-
               <div className="flex-1 overflow-auto no-scrollbar p-4 pt-2">
                 {loading ? (
                   <div className="flex items-center justify-center h-full"><Loader2 size={22} className="animate-spin text-cyan" /></div>
@@ -621,7 +745,15 @@ export default function TasksPage() {
                     users={users}
                     onOpen={id => setSelectedTaskId(id)}
                     onTaskUpdated={handleTaskUpdated}
-                    onAddTask={status => { setAddingForStatus(status); setNewTaskTitle(""); }}
+                    addingSubtaskFor={addingSubtaskFor}
+                    setAddingSubtaskFor={setAddingSubtaskFor}
+                    handleCreateTask={handleCreateTask}
+                    isCreating={isCreating}
+                    newTaskTitle={newTaskTitle}
+                    setNewTaskTitle={setNewTaskTitle}
+                    addingForStatus={addingForStatus}
+                    setAddingForStatus={setAddingForStatus}
+                    onDelete={handleDeleteTask}
                   />
                 ) : (
                   // Kanban

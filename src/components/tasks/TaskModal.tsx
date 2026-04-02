@@ -4,8 +4,122 @@ import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Clock, MessageSquare, UserPlus, FileText, Send,
-  Loader2, GitMerge, ChevronRight, Trash2, Plus
+  Loader2, GitMerge, ChevronRight, Trash2, Plus,
+  CheckCircle2, CircleDashed, Eye, Flag, Calendar
 } from "lucide-react";
+
+// ─── Inline Loaders ─────────────────────────────────────────────────────────
+
+const STATUS_ICONS: Record<string, any> = {
+  DONE: CheckCircle2, IN_PROGRESS: Clock, REVIEW: Eye, TODO: CircleDashed,
+};
+
+function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; users: any[]; onChange: (ids: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  useEffect(() => { const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
+  const toggle = (uid: string) => { const ids = assignees.map((a: any) => typeof a === "string" ? a : a._id); onChange(ids.includes(uid) ? ids.filter(id => id !== uid) : [...ids, uid]); };
+  const assigneeIds = assignees.map((a: any) => typeof a === "string" ? a : a._id);
+  return (
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(v => !v)} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+        {assignees.length > 0 ? (
+          <div className="flex -space-x-1.5 flex-wrap">
+            {assignees.slice(0, 2).map((a: any, i) => (
+              <div key={i} className="w-5 h-5 rounded-full border-2 border-surface bg-gradient-to-br from-cyan/40 to-violet/30 flex items-center justify-center text-[8px] font-bold text-white overflow-hidden" title={a.name}>
+                {a.avatar ? <img src={a.avatar} className="w-full h-full object-cover" alt="" /> : a.name?.[0]}
+              </div>
+            ))}
+          </div>
+        ) : <UserPlus size={12} className="text-muted/40 hover:text-muted transition-colors" />}
+      </button>
+      <AnimatePresence>
+        {open && (
+           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} className="absolute bottom-full mb-1 sm:bottom-auto sm:mb-0 sm:top-full sm:mt-1 left-0 sm:left-auto sm:right-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[150px] py-1 max-h-48 overflow-y-auto">
+            {users.map(u => {
+              const checked = assigneeIds.includes(u._id);
+              return (
+                <button key={u._id} onClick={() => toggle(u._id)} className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/5 transition-colors text-left ${checked ? "text-foreground" : "text-muted"}`}>
+                  <div className="w-4 h-4 rounded-full bg-cyan/40 flex shrink-0 items-center justify-center text-[6px] font-bold text-white overflow-hidden">{u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : u.name?.[0]}</div>
+                  <span className="flex-1 truncate leading-tight">{u.name}</span>
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function PriorityPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  useEffect(() => { const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
+  const priorities = [{ value: "URGENT", label: "Urgent", color: "text-red-500" }, { value: "HIGH", label: "High", color: "text-amber-500" }, { value: "NORMAL", label: "Normal", color: "text-blue-500" }, { value: "LOW", label: "Low", color: "text-slate-400" }];
+  const current = priorities.find(p => p.value === value) || priorities[2];
+  return (
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(v => !v)} className="flex items-center justify-center p-0.5 rounded hover:bg-muted/10">
+        <Flag size={11} className={current.color} />
+      </button>
+      <AnimatePresence>
+        {open && (
+           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} className="absolute bottom-full mb-1 sm:bottom-auto sm:mb-0 sm:top-full sm:mt-1 right-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[110px] py-1">
+            {priorities.map(p => (
+              <button key={p.value} onClick={() => { onChange(p.value); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/5 text-left ${value === p.value ? "text-foreground bg-muted/5" : "text-muted"}`}>
+                <Flag size={10} className={p.color} /><span className="flex-1 leading-tight">{p.label}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function StatusPicker({ value, activeStatuses, onChange }: { value: string; activeStatuses: any[]; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  useEffect(() => { const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
+  const current = activeStatuses.find(s => s.name === value);
+  const hex = current ? statusHex(current.color) : "#6b7280";
+  return (
+    <div ref={ref} className="relative shrink-0 flex items-center justify-center" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(v => !v)} className="hover:scale-110 transition-transform">
+        <div className="w-2.5 h-2.5 rounded-full border-2 transition-colors" style={{ borderColor: hex }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} className="absolute bottom-full mb-1 sm:bottom-auto sm:mb-0 sm:top-full sm:mt-1 left-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[130px] py-1 max-h-48 overflow-y-auto">
+            {activeStatuses.map(s => {
+              const hx = statusHex(s.color);
+              const SIcon = STATUS_ICONS[s.name] || CircleDashed;
+              return (
+                <button key={s.name} onClick={() => { onChange(s.name); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-[10px] hover:bg-muted/5 text-left ${value === s.name ? "text-foreground bg-muted/5" : "text-muted"}`}>
+                  <SIcon size={10} style={{ color: hx }} /><span className="flex-1 uppercase font-semibold tracking-wider">{s.name}</span>
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function DatePicker({ value, onChange }: { value: string | null; onChange: (d: string) => void }) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const formatted = value ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
+  return (
+    <div className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => inputRef.current?.showPicker?.()} className="flex items-center gap-1 text-muted/50 hover:text-muted transition-colors">
+        {formatted ? <span className="text-[10px] text-foreground/70">{formatted}</span> : <Calendar size={11} />}
+      </button>
+      <input ref={inputRef} type="date" value={value ? new Date(value).toISOString().split("T")[0] : ""} onChange={e => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+    </div>
+  );
+}
 import dynamic from "next/dynamic";
 
 const RichTextEditor = dynamic(() => import("./RichTextEditor"), {
@@ -146,6 +260,14 @@ export default function TaskModal({
     const json = await res.json();
     if (json.success) { setSubtasks(prev => [json.data, ...prev]); setNewSubtaskTitle(""); }
     setCreatingSubtask(false);
+  };
+
+  const patchSubtask = async (id: string, updates: any) => {
+    const res = await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
+    const json = await res.json();
+    if (json.success) {
+      setSubtasks(prev => prev.map(s => String(s._id) === id ? json.data : s));
+    }
   };
 
   const handleToggleAssignee = (userId: string) => {
@@ -354,23 +476,46 @@ export default function TaskModal({
                             transition={{ duration: 0.18 }}
                             className="overflow-hidden"
                           >
-                            <div className="space-y-1.5 mt-2 mb-3">
+                              {/* Headers */}
+                              {subtasks.length > 0 && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-muted/5 text-[9px] font-bold uppercase tracking-wider text-muted/50">
+                                  <div className="w-3 shrink-0" />
+                                  <div className="flex-1">Name</div>
+                                  <div className="w-16 text-center shrink-0">Assignee</div>
+                                  <div className="w-16 text-center shrink-0">Priority</div>
+                                  <div className="w-16 text-center shrink-0">Due Date</div>
+                                </div>
+                              )}
                               {subtasks.map(sub => (
-                                <motion.div
+                                <div
                                   key={String(sub._id)}
-                                  initial={{ opacity: 0, x: -4 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={spring}
+                                  className="flex items-center gap-2 px-3 py-1.5 border-b border-muted/5 hover:bg-muted/5 transition-colors group cursor-pointer"
                                   onClick={() => drillDown(sub)}
-                                  className="flex items-center gap-3 px-3.5 py-2.5 bg-muted/5 border border-muted/10 rounded-xl hover:border-cyan/30 hover:bg-cyan/5 cursor-pointer transition-all group/sub"
                                 >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-muted/30 shrink-0" />
-                                  <span className="text-sm text-foreground/70 group-hover/sub:text-foreground transition-colors flex-1 truncate">{sub.title}</span>
-                                  <span className="text-[9px] text-muted font-bold uppercase">{sub.status}</span>
-                                  <ChevronRight size={10} className="text-muted/30 group-hover/sub:text-cyan transition-colors shrink-0" />
-                                </motion.div>
+                                  {/* Status */}
+                                  <div className="shrink-0 w-4 flex justify-center" onClick={e => e.stopPropagation()}>
+                                    <StatusPicker value={sub.status} activeStatuses={boardStatuses} onChange={s => patchSubtask(String(sub._id), { status: s })} />
+                                  </div>
+                                  
+                                  {/* Title */}
+                                  <span className="text-[13px] font-medium text-foreground/80 group-hover:text-cyan transition-colors flex-1 truncate">{sub.title}</span>
+                                  
+                                  {/* Assignee */}
+                                  <div className="shrink-0 w-16 flex justify-center" onClick={e => e.stopPropagation()}>
+                                    <AssigneePicker assignees={sub.assignee_ids || []} users={users} onChange={ids => patchSubtask(String(sub._id), { assignee_ids: ids })} />
+                                  </div>
+
+                                  {/* Priority */}
+                                  <div className="shrink-0 w-16 flex justify-center" onClick={e => e.stopPropagation()}>
+                                    <PriorityPicker value={sub.priority || "NORMAL"} onChange={p => patchSubtask(String(sub._id), { priority: p })} />
+                                  </div>
+
+                                  {/* Due Date */}
+                                  <div className="shrink-0 w-16 flex justify-center" onClick={e => e.stopPropagation()}>
+                                    <DatePicker value={sub.due_date || null} onChange={d => patchSubtask(String(sub._id), { due_date: d })} />
+                                  </div>
+                                </div>
                               ))}
-                            </div>
                             <form onSubmit={handleAddSubtask} className="flex items-center gap-2">
                               <input
                                 value={newSubtaskTitle}

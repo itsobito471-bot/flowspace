@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const query: any = { organization_id: orgId };
     if (parentId) {
       query.parent_task_id = parentId;
-    } else {
+    } else if (!boardId && !pageId) {
       query.parent_task_id = null;
     }
     if (boardId) {
