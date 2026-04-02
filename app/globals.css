@@ -3,54 +3,154 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-
-  /* Mapping our custom semantic names to variables */
-  --color-obsidian: var(--obsidian);
-  --color-surface: var(--surface);
-
-  --color-cyan: var(--cyan);
-  --color-violet: var(--violet);
-  
-  --color-off-white: var(--off-white);
-  --color-muted: var(--muted);
-
+  --color-obsidian:   var(--obsidian);
+  --color-surface:    var(--surface);
+  --color-cyan:       var(--cyan);
+  --color-violet:     var(--violet);
+  --color-off-white:  var(--off-white);
+  --color-muted:      var(--muted);
+  --color-brand-bg:   var(--btn-primary-bg);
+  --color-brand-fg:   var(--btn-primary-fg);
   --radius-extreme: 32px;
 }
 
-/* Light Mode Defaults */
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT MODE — matches landing page light theme
+   Palette: white/near-white background · near-black text · #0284C7 accent
+   Black buttons with white text · sky-blue accent
+───────────────────────────────────────────────────────────────────────────── */
 :root {
-  --background: #F3F4F6;
-  --foreground: #111827;
-  
-  --obsidian: #F9FAFB;
-  --surface: #FFFFFF;
-  
-  --cyan: #07A5B0;
-  --violet: #6D28D9;
-  
-  --off-white: #1F2937;
-  --muted: #6B7280;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+
+  --obsidian:   #F8FAFC;
+  --surface:    #FFFFFF;
+
+  /* Accent — same blue as landing page light mode */
+  --cyan:       #0284C7;
+  --violet:     #7C3AED;
+
+  --off-white:  #0F172A;
+  --muted:      #64748B;
+
+  /* Button / interactive tokens */
+  --btn-primary-bg:   #0284C7;
+  --btn-primary-fg:   #FFFFFF;
+  --btn-accent-bg:    #0284C7;
+  --btn-accent-fg:    #FFFFFF;
+
+  /* Border */
+  --border-subtle:    rgba(0, 0, 0, 0.07);
 }
 
-/* Dark Mode Overrides (softer than previous #0A0A0B) */
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE — matches landing page dark theme
+   Palette: #080B10 background · #F0F4FF text · #00E8D2 teal/cyan accent
+───────────────────────────────────────────────────────────────────────────── */
 .dark {
-  --background: #0E0E10;
-  --foreground: #E5E7EB;
-  
-  --obsidian: #0E0E10;
-  --surface: #18181A;
-  
-  --cyan: #00F2FE;
-  --violet: #892CDC;
-  
-  --off-white: #F3F4F6;
-  --muted: #A1A1AA;
+  --background: #080B10;
+  --foreground: #F0F4FF;
+
+  --obsidian:   #080B10;
+  --surface:    #0E1219;
+
+  /* Accent — neon teal from landing page */
+  --cyan:       #00E8D2;
+  --violet:     #7C3AED;
+
+  --off-white:  #F0F4FF;
+  --muted:      #8A95A5;
+
+  /* Button tokens */
+  --btn-primary-bg:   #00E8D2;
+  --btn-primary-fg:   #FFFFFF;
+  --btn-accent-bg:    #00E8D2;
+  --btn-accent-fg:    #FFFFFF;
+
+  /* Border */
+  --border-subtle:    rgba(255, 255, 255, 0.06);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE STYLES
+───────────────────────────────────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  background:  var(--background);
+  color:       var(--foreground);
+  font-family: 'Inter', 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+  transition:  background-color 0.35s ease, color 0.35s ease;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Consistent scrollbar */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: rgba(0, 232, 210, 0.25); border-radius: 99px; }
+
+/* Selection highlight */
+::selection { background: rgba(0, 232, 210, 0.18); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   UTILITY — primary CTA button (used across dashboard/admin)
+   Usage: className="btn-primary"
+───────────────────────────────────────────────────────────────────────────── */
+.btn-primary {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             0.5rem;
+  padding:         0.55rem 1.35rem;
+  border-radius:   8px;
+  border:          none;
+  background:      var(--btn-primary-bg);
+  color:           var(--btn-primary-fg);
+  font-weight:     600;
+  font-size:       0.875rem;
+  cursor:          pointer;
+  transition:      opacity 0.2s, box-shadow 0.2s;
+  white-space:     nowrap;
+}
+.btn-primary:hover { opacity: 0.88; box-shadow: 0 0 20px rgba(0,232,210,0.2); }
+
+.btn-accent {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             0.5rem;
+  padding:         0.55rem 1.35rem;
+  border-radius:   8px;
+  border:          1px solid var(--cyan);
+  background:      transparent;
+  color:           var(--cyan);
+  font-weight:     600;
+  font-size:       0.875rem;
+  cursor:          pointer;
+  transition:      background 0.2s, box-shadow 0.2s;
+  white-space:     nowrap;
+}
+.btn-accent:hover { background: rgba(0,232,210,0.08); box-shadow: 0 0 18px rgba(0,232,210,0.18); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BRAND BUTTON — color-inversion hover effect
+   Usage: add className="btn-brand" alongside layout/sizing Tailwind classes
+   Hover: bg→transparent, text→brand color, border stays — clean inversion
+───────────────────────────────────────────────────────────────────────────── */
+.btn-brand {
+  background:  var(--btn-primary-bg);
+  color:       var(--btn-primary-fg);
+  border:      1px solid var(--btn-primary-bg);
+  transition:  background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease, transform 0.15s ease;
+}
+.btn-brand:hover:not(:disabled) {
+  background:  transparent;
+  color:       var(--btn-primary-bg);
+  box-shadow:  0 4px 16px color-mix(in srgb, var(--btn-primary-bg) 25%, transparent);
+  transform:   translateY(-1px);
+}
+.btn-brand:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn-brand:disabled {
+  opacity: 0.45;
+  cursor:  not-allowed;
+}

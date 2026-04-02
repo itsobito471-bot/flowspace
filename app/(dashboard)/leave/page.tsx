@@ -362,7 +362,7 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
                     Cancel
                   </button>
                   <button type="submit" disabled={submitting || success || (selectedBal ? days! > selectedBal.remaining : false)}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                    className="btn-brand flex-1 py-2.5 rounded-xl text-sm font-bold disabled:cursor-not-allowed flex items-center justify-center gap-2">
                     {submitting ? <><Loader2 size={14} className="animate-spin" /> Submitting…</> : "Submit Request"}
                   </button>
                 </div>
@@ -807,7 +807,7 @@ function LeavePageInner() {
           {!isAdmin && (
             <button
               onClick={() => setRequestModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold tracking-tight hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+              className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold tracking-tight hover:scale-[1.02] active:scale-[0.98]">
               <Plus size={15} strokeWidth={2.5} /> Request Leave
             </button>
           )}

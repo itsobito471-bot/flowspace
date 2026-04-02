@@ -450,7 +450,7 @@ function AddManualTimeModal({ open, onClose, employeeId, onCreated }: {
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted border border-muted/20 hover:bg-muted/5 transition-all">Cancel</button>
-              <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-foreground text-background hover:bg-foreground/90 transition-all flex justify-center items-center">
+              <button type="submit" disabled={loading} className="btn-brand flex-1 py-2.5 rounded-xl text-sm font-bold flex justify-center items-center">
                 {loading ? <Loader2 size={16} className="animate-spin" /> : "Save Time"}
               </button>
             </div>
@@ -583,7 +583,7 @@ export default function EmployeeProfilePage() {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-theme(spacing.16))] gap-4">
         <h2 className="text-xl font-bold text-muted">Employee Not Found</h2>
-        <button onClick={() => router.back()} className="px-4 py-2 bg-foreground text-background text-sm font-bold rounded-xl active:scale-95 transition-all">Go Back</button>
+        <button onClick={() => router.back()} className="btn-brand px-4 py-2 text-sm font-bold rounded-xl">Go Back</button>
       </div>
     );
   }
@@ -611,7 +611,7 @@ export default function EmployeeProfilePage() {
             </div>
           </div>
           {isAdmin && (
-            <button onClick={() => setManualModalOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-foreground text-background text-xs font-bold rounded-lg hover:bg-foreground/90 transition-all shadow-sm">
+            <button onClick={() => setManualModalOpen(true)} className="btn-brand flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg shadow-sm">
               <Clock size={13} /> Add Manual Time
             </button>
           )}

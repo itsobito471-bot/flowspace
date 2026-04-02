@@ -189,7 +189,7 @@ export default function LoginPage() {
                                     <div className="absolute inset-0 border border-cyan/50 border-dashed rounded-full group-hover/btn:rotate-180 transition-all duration-1000 ease-linear" />
                                     <button
                                         type="submit"
-                                        className="relative w-full bg-foreground text-background font-semibold rounded-full px-4 py-3.5 hover:opacity-90 transition-opacity"
+                                        className="btn-brand relative w-full font-semibold rounded-full px-4 py-3.5"
                                     >
                                         Login to Workspace
                                     </button>
