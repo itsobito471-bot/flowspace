@@ -10,6 +10,7 @@ import { format } from "date-fns";
 interface Enquiry {
   _id: string;
   full_name: string;
+  email?: string;
   company: string;
   team_size: string;
   message?: string;
@@ -90,6 +91,7 @@ export default function EnquiriesPage() {
   const filtered = enquiries.filter(e => 
     e.company.toLowerCase().includes(search.toLowerCase()) || 
     e.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    (e.email && e.email.toLowerCase().includes(search.toLowerCase())) ||
     (e.message && e.message.toLowerCase().includes(search.toLowerCase()))
   );
   
@@ -128,7 +130,7 @@ export default function EnquiriesPage() {
 
         <div className="relative">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
-          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "#E8E8F0" }} placeholder="Search companies, names..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "#E8E8F0" }} placeholder="Search companies, names, emails..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
         {/* Desktop: table layout, Mobile: Card Layout */}
@@ -167,6 +169,7 @@ export default function EnquiriesPage() {
                 >
                   <td className="px-6 py-4">
                     <p className="font-bold text-sm">{enq.full_name}</p>
+                    {enq.email && <p className="text-[11px] font-mono mt-0.5" style={{ color: BLUE }}><a href={`mailto:${enq.email}`}>{enq.email}</a></p>}
                     <p className="text-[11px] font-mono mt-0.5" style={{ color: MUTED }}>{format(new Date(enq.createdAt), "MMM d, yyyy")}</p>
                   </td>
                   <td className="px-6 py-4">
@@ -216,6 +219,7 @@ export default function EnquiriesPage() {
                 <div className="flex justify-between items-start">
                    <div>
                       <p className="font-bold text-sm">{enq.full_name}</p>
+                      {enq.email && <p className="text-[11px] font-mono mt-0.5" style={{ color: BLUE }}><a href={`mailto:${enq.email}`}>{enq.email}</a></p>}
                       <p className="text-[11px] font-mono mt-0.5" style={{ color: MUTED }}>{enq.company}</p>
                    </div>
                    <StatusBadge status={enq.status} />

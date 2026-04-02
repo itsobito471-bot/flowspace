@@ -27,9 +27,10 @@ export default withAuth(
 export const config = {
   matcher: [
     // Protect all /api routes EXCEPT the auth endpoints themselves
-    "/api/((?!auth).*)",
+    "/api/((?!auth|enquiries|testimonials).*)",
     // Protect all dashboard and super-admin pages
     "/(dashboard)/:path*",
     "/(super-admin)/:path*",
   ],
 };
+

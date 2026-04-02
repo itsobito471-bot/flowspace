@@ -1202,6 +1202,7 @@ function EnquirySection() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
+    email: "",
     company: "",
     team_size: "",
     message: "",
@@ -1410,21 +1411,27 @@ function EnquirySection() {
                     <label>Full Name</label>
                   </div>
                   <div className="field-wrap">
-                    <input type="text" placeholder=" " required value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} />
-                    <label>Company</label>
+                    <input type="email" placeholder=" " required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                    <label>Email</label>
                   </div>
                 </div>
 
-                <div className="field-wrap">
-                  <select required value={formData.team_size} onChange={e => setFormData({ ...formData, team_size: e.target.value })}>
-                    <option value="" disabled />
-                    <option>1–25</option>
-                    <option>26–100</option>
-                    <option>101–500</option>
-                    <option>501–2000</option>
-                    <option>2000+</option>
-                  </select>
-                  <label>Team Size</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                  <div className="field-wrap">
+                    <input type="text" placeholder=" " required value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} />
+                    <label>Company</label>
+                  </div>
+                  <div className="field-wrap">
+                    <select required value={formData.team_size} onChange={e => setFormData({ ...formData, team_size: e.target.value })}>
+                      <option value="" disabled />
+                      <option>1–25</option>
+                      <option>26–100</option>
+                      <option>101–500</option>
+                      <option>501–2000</option>
+                      <option>2000+</option>
+                    </select>
+                    <label>Team Size</label>
+                  </div>
                 </div>
 
                 <div className="field-wrap">
