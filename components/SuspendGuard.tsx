@@ -15,7 +15,7 @@ export default function SuspendGuard({ children }: { children: React.ReactNode }
 
                 // signOut destroys the local token and kicks them to the login screen
                 // We append a URL parameter so the login screen knows WHY they were kicked out
-                signOut({ callbackUrl: "/?error=suspended" });
+                signOut({ callbackUrl: "/login?error=suspended" });
             }
         }
     }, [session, status]);

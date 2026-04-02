@@ -60,7 +60,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
               <span className="hidden sm:block">{label.split(" ")[0]}</span>
             </Link>
           ))}
-          <Link href="/api/auth/signout" className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-white/5" style={{ color: MUTED }}>
+          <Link href="/api/auth/signout?callbackUrl=/login" className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-white/5" style={{ color: MUTED }}>
             <LogOut size={13} />
           </Link>
         </div>
@@ -114,7 +114,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
               </p>
             </div>
             <Link
-              href="/api/auth/signout"
+              href="/api/auth/signout?callbackUrl=/login"
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all w-full hover:bg-red-500/10"
               style={{ color: MUTED }}
             >

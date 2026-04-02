@@ -204,7 +204,7 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
 
         {/* Logout */}
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
+                  onClick={() => signOut({ callbackUrl: "/login" })}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all 
             text-red-500/70 hover:text-red-500 hover:bg-red-500/10 ${collapsed ? "justify-center" : ""
             }`}
@@ -331,7 +331,7 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
                 </Link>
 
                 <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
+                          onClick={() => signOut({ callbackUrl: "/login" })}
                   className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-500/70 hover:text-red-500 hover:bg-red-500/10 transition-all"
                 >
                   <LogOut size={18} />
