@@ -207,6 +207,55 @@ export async function POST(request: Request) {
       }
 
       record.check_out = now;
+
+      // ── 🎁 Comp Off Eligibility Check ────────────────────────────────────
+      // Check if today is a weekend or public holiday
+      const weekendPolicyForCompOff = settings?.weekend_policy ?? [0];
+      const isWeekendDay = weekendPolicyForCompOff.includes(today.getUTCDay());
+
+      // Check specific_weekend_rules (alternating weekends like 2nd/4th Saturday)
+      let isSpecificWeekendOff = false;
+      if (!isWeekendDay && settings?.specific_weekend_rules?.length) {
+        const dayOfWeek = today.getUTCDay();
+        const rule = settings.specific_weekend_rules.find(r => r.dayOfWeek === dayOfWeek);
+        if (rule) {
+          // Calculate which occurrence of this weekday in the month this is
+          const dayOfMonth = today.getUTCDate();
+          const weekNumber = Math.ceil(dayOfMonth / 7);
+          if (rule.weekNumbers.includes(weekNumber)) {
+            isSpecificWeekendOff = true;
+          }
+        }
+      }
+
+      const isPublicHoliday = !!(await Holiday.findOne({
+        organization_id: new mongoose.Types.ObjectId(orgId),
+        date: today,
+      }).lean());
+
+      const isCompOffEligibleDay = isWeekendDay || isSpecificWeekendOff || isPublicHoliday;
+
+      if (isCompOffEligibleDay) {
+        // Compute total hours worked today including all previous sessions
+        const allTodaySessions = await Attendance.find({ user_id: userId, date: today }).sort({ check_in: 1 }).lean();
+        let totalSeconds = 0;
+        for (const session of allTodaySessions) {
+          const cin = session.check_in ? new Date(session.check_in).getTime() : null;
+          // For the current (last) session, use `now` as check_out since it is not saved yet
+          const cout = session._id.toString() === record._id.toString()
+            ? now.getTime()
+            : (session.check_out ? new Date(session.check_out).getTime() : null);
+          if (cin && cout) {
+            totalSeconds += Math.floor((cout - cin) / 1000);
+          }
+        }
+
+        const totalHours = totalSeconds / 3600;
+        if (totalHours > 4) {
+          record.comp_off_status = "ELIGIBLE";
+        }
+      }
+
       await record.save();
 
       // ── 🚨 Early Check-Out Trap ──────────────────────────────────────────

@@ -6,6 +6,31 @@ import { User } from "@/src/lib/models/User";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
+// GET /api/profile — returns the current user's own profile data (excluding passwordHash)
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !(session.user as any)?.id) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    await dbConnect();
+
+    const user = await User.findById((session.user as any).id)
+      .select("-passwordHash")
+      .lean();
+
+    if (!user) {
+      return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: user });
+  } catch (error: any) {
+    console.error("Profile GET error:", error);
+    return NextResponse.json({ success: false, message: error.message || "Internal server error" }, { status: 500 });
+  }
+}
+
 // PATCH /api/profile
 // Designed to accept multpart/form-data
 export async function PATCH(request: Request) {

@@ -9,6 +9,7 @@ export interface IUser extends Document {
   passwordHash: string;
   role_id: mongoose.Types.ObjectId;
   earned_flex_leaves: number;
+  earned_comp_offs: number;
   is_active: boolean;
   organization_id?: mongoose.Types.ObjectId | null;
   user_type: "SUPER_ADMIN" | "ORG_USER";
@@ -26,6 +27,7 @@ const UserSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     role_id: { type: Schema.Types.ObjectId, ref: "Role", required: false },
     earned_flex_leaves: { type: Number, default: 0 },
+    earned_comp_offs: { type: Number, default: 0 },
     is_active: { type: Boolean, default: true },
     organization_id: { type: Schema.Types.ObjectId, ref: "Organization", default: null },
     user_type: {

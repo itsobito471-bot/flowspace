@@ -29,6 +29,7 @@ import { EditEmployeeModal, EditRoleModal, DeleteModal } from "./EditModals";
 import ExportReportModal from "@/components/ExportReportModal";
 import ErrorModal from "@/components/ErrorModal";
 import TeamStatusWidget from "@/components/TeamStatusWidget";
+import CompOffApprovals from "@/components/CompOffApprovals";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -854,6 +855,11 @@ export default function TeamPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Comp Off Approvals Queue (Admin Only) ── */}
+        <hr className="border-muted/10" />
+        <CompOffApprovals />
+
       </motion.div>
     </>
   );

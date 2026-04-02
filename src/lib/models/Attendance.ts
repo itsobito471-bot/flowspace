@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
+export type CompOffStatus = "NONE" | "ELIGIBLE" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+
 export interface IAttendance extends Document {
   user_id: mongoose.Types.ObjectId;
   /** Stored normalised to midnight UTC for clean date comparisons */
@@ -11,6 +13,7 @@ export interface IAttendance extends Document {
   description: string | null;
   location?: { lat: number | null; lng: number | null };
   organization_id: mongoose.Types.ObjectId;
+  comp_off_status: CompOffStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +36,11 @@ const AttendanceSchema = new Schema<IAttendance>(
     location: {
       lat: { type: Number, default: null },
       lng: { type: Number, default: null },
+    },
+    comp_off_status: {
+      type: String,
+      enum: ["NONE", "ELIGIBLE", "PENDING_APPROVAL", "APPROVED", "REJECTED"],
+      default: "NONE",
     },
   },
   { timestamps: true }

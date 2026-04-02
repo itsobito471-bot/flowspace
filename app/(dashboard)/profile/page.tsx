@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
-import { Camera, Loader2, Save, User as UserIcon, FileText, ShieldAlert } from "lucide-react";
+import { Camera, Loader2, Save, User as UserIcon, FileText, ShieldAlert, Gift, Clock, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import ErrorModal from "@/components/ErrorModal";
 import PayrollSection from "@/src/components/employee/PayrollSection";
 
@@ -177,6 +177,16 @@ export default function ProfilePage() {
           </form>
         </div>
 
+        {/* Comp Off Balance Card */}
+        {(session?.user as any)?.id && (
+          <CompOffBalanceCard userId={(session?.user as any)?.id} />
+        )}
+
+        {/* My Attendance History with Comp Off Claim */}
+        {(session?.user as any)?.id && (
+          <MyAttendanceHistorySection userId={(session?.user as any)?.id} />
+        )}
+
         {/* My Payslips Section */}
         {(session?.user as any)?.id && (
           <div>
@@ -194,6 +204,231 @@ export default function ProfilePage() {
         )}
       </motion.div>
     </>
+  );
+}
+
+// ── Comp Off Balance Card ───────────────────────────────────────────────────────
+function CompOffBalanceCard({ userId }: { userId: string }) {
+  const [balance, setBalance] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) {
+          setBalance(json.data?.earned_comp_offs ?? 0);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  if (loading || balance === null) return null;
+
+  return (
+    <div className="bg-surface border border-muted/10 rounded-2xl p-5 flex items-center gap-4">
+      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+        <Gift size={22} className="text-emerald-400" />
+      </div>
+      <div>
+        <p className="text-[10px] font-bold tracking-widest uppercase text-muted/80">Comp Off Balance</p>
+        <p className="text-2xl font-black text-emerald-400 leading-tight">
+          {balance} <span className="text-sm font-semibold text-muted">day{balance !== 1 ? "s" : ""} available</span>
+        </p>
+        <p className="text-[11px] text-muted mt-0.5">
+          Earned from working on weekends &amp; public holidays.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── My Attendance History w/ Comp Off Claim ──────────────────────────────────
+function MyAttendanceHistorySection({ userId }: { userId: string }) {
+  const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState<Record<string, boolean>>({});
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const LIMIT = 20;
+
+  const fetchHistory = (p: number) => {
+    setLoading(true);
+    fetch(`/api/attendance/log?userId=${userId}&page=${p}&limit=${LIMIT}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!json.success) throw new Error(json.message ?? "Failed to load");
+        setRecords(json.data);
+        setTotalPages(json.pagination.totalPages ?? 1);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchHistory(1); }, [userId]);
+
+  const handleClaim = async (attendanceId: string) => {
+    setClaiming((prev) => ({ ...prev, [attendanceId]: true }));
+    try {
+      const res = await fetch("/api/comp-off/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attendanceId }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+      // Optimistically update the record status in state
+      setRecords((prev) =>
+        prev.map((r) =>
+          r._id === attendanceId ? { ...r, comp_off_status: "PENDING_APPROVAL" } : r
+        )
+      );
+    } catch (err: any) {
+      setError(err.message ?? "Claim failed.");
+    } finally {
+      setClaiming((prev) => ({ ...prev, [attendanceId]: false }));
+    }
+  };
+
+  const compOffStatusBadge = (status: string) => {
+    switch (status) {
+      case "ELIGIBLE":
+        return null; // handled as button
+      case "PENDING_APPROVAL":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+            <Clock size={9} /> Pending
+          </span>
+        );
+      case "APPROVED":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <Gift size={9} /> Approved
+          </span>
+        );
+      case "REJECTED":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+            Rejected
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <CalendarDays size={18} className="text-muted" />
+        <h2 className="text-lg font-bold tracking-tight">Attendance History</h2>
+      </div>
+
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm mb-4">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center p-10">
+          <Loader2 className="animate-spin text-cyan" size={24} />
+        </div>
+      ) : records.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted bg-surface border border-muted/10 rounded-2xl">
+          <CalendarDays size={28} strokeWidth={1.2} />
+          <p className="text-sm">No attendance records found.</p>
+        </div>
+      ) : (
+        <div className="bg-surface border border-muted/10 rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[500px]">
+              <thead>
+                <tr className="border-b border-muted/10 bg-muted/5">
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Date</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Check In</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Check Out</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Status</th>
+                  <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Comp Off</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((rec) => (
+                  <tr key={rec._id} className="border-b border-muted/10 hover:bg-muted/5 transition-colors">
+                    <td className="px-5 py-3 text-sm font-semibold">
+                      {new Date(rec.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    </td>
+                    <td className="px-5 py-3 text-sm font-mono text-cyan/80">
+                      {rec.check_in ? new Date(rec.check_in).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
+                    </td>
+                    <td className="px-5 py-3 text-sm font-mono text-rose-400/80">
+                      {rec.check_out ? new Date(rec.check_out).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        rec.status === "PRESENT"
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : rec.status === "HALF_DAY"
+                          ? "bg-amber-400/10 text-amber-400 border-amber-400/20"
+                          : "bg-red-500/10 text-red-400 border-red-500/20"
+                      }`}>{rec.status}</span>
+                    </td>
+                    <td className="px-5 py-3">
+                      {rec.comp_off_status === "ELIGIBLE" ? (
+                        <button
+                          onClick={() => handleClaim(rec._id)}
+                          disabled={claiming[rec._id]}
+                          className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold
+                            bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
+                            hover:bg-emerald-500/20 hover:border-emerald-500/50
+                            shadow-[0_0_12px_rgba(52,211,153,0.2)] hover:shadow-[0_0_20px_rgba(52,211,153,0.35)]
+                            transition-all disabled:opacity-60 disabled:cursor-not-allowed
+                            animate-pulse-slow"
+                        >
+                          {claiming[rec._id] ? (
+                            <Loader2 size={10} className="animate-spin" />
+                          ) : (
+                            <Gift size={10} />
+                          )}
+                          Claim Comp Off
+                        </button>
+                      ) : (
+                        compOffStatusBadge(rec.comp_off_status)
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-muted/10">
+              <span className="text-[11px] text-muted">Page {page} of {totalPages}</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { const p = page - 1; setPage(p); fetchHistory(p); }}
+                  disabled={page <= 1}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted border border-muted/15 hover:border-cyan/30 hover:text-cyan disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft size={12} /> Prev
+                </button>
+                <button
+                  onClick={() => { const p = page + 1; setPage(p); fetchHistory(p); }}
+                  disabled={page >= totalPages}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted border border-muted/15 hover:border-cyan/30 hover:text-cyan disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  Next <ChevronRight size={12} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
