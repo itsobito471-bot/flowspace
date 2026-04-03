@@ -27,8 +27,7 @@ export async function GET(request: Request) {
     const myUserId = (session.user as any).id;
 
     const filter: any = { 
-      organization_id: myOrgId,
-      _id: { $ne: myUserId }
+      organization_id: myOrgId
     };
 
     const { searchParams } = new URL(request.url);

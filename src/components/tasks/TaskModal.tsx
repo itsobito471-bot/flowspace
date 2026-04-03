@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Clock, MessageSquare, UserPlus, FileText, Send,
   Loader2, GitMerge, ChevronRight, Trash2, Plus,
-  CheckCircle2, CircleDashed, Eye, Flag, Calendar
+  CheckCircle2, CircleDashed, Eye, Flag, Calendar,
+  Smile, CornerDownRight, AtSign
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 // ─── Inline Loaders ─────────────────────────────────────────────────────────
 
@@ -141,11 +143,13 @@ interface TaskModalProps {
 const spring = { type: "spring", stiffness: 420, damping: 34 } as const;
 
 function statusHex(color: string) {
+  if (color && (color.startsWith("#") || color.startsWith("rgb"))) return color;
   const map: Record<string, string> = {
     "text-green-400": "#4ade80", "text-blue-400": "#60a5fa",
     "text-yellow-400": "#facc15", "text-red-400": "#f87171",
     "text-purple-400": "#c084fc", "text-cyan-400": "#22d3ee",
-    "gray": "#6b7280",
+    "text-amber-400": "#fbbf24", "text-emerald-400": "#34d399",
+    "text-muted": "#6b7280", "gray": "#6b7280",
   };
   return map[color] || "#6b7280";
 }
@@ -153,6 +157,9 @@ function statusHex(color: string) {
 export default function TaskModal({
   taskId, isOpen, onClose, onTaskUpdated, users, boardStatuses, boardName, pageName
 }: TaskModalProps) {
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as any)?.id || null;
+
   const [task, setTask] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<any[]>([]);
@@ -161,6 +168,10 @@ export default function TaskModal({
   const [savingTask, setSavingTask] = useState(false);
   const [deletingTask, setDeletingTask] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [mentionQuery, setMentionQuery] = useState<{ active: boolean; text: string; cursor: number } | null>(null);
+  const [mentionedIds, setMentionedIds] = useState<Set<string>>(new Set());
 
   const [subtasks, setSubtasks] = useState<any[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -232,14 +243,55 @@ export default function TaskModal({
   const handlePostComment = async () => {
     if (!newComment.trim() || !currentTaskId) return;
     setPostingComment(true);
+    const mentionsArray = Array.from(mentionedIds);
     const res = await fetch(`/api/tasks/${currentTaskId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newComment }),
+      body: JSON.stringify({ content: newComment, parent_id: replyingTo?._id || null, mentions: mentionsArray }),
     });
     const json = await res.json();
-    if (json.success) { setComments(prev => [...prev, json.data]); setNewComment(""); }
+    if (json.success) { 
+      setComments(prev => [...prev, json.data]); 
+      setNewComment(""); 
+      setReplyingTo(null); 
+      setMentionedIds(new Set()); 
+    }
     setPostingComment(false);
+  };
+
+  const toggleReaction = async (commentId: string, emoji: string) => {
+    if (!currentTaskId) return;
+    const res = await fetch(`/api/tasks/${currentTaskId}/comments`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commentId, emoji }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      setComments(prev => prev.map(c => String(c._id) === commentId ? json.data : c));
+    }
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setNewComment(val);
+    const cursor = e.target.selectionStart;
+    const lastAt = val.lastIndexOf("@", cursor - 1);
+    const lastSpace = val.lastIndexOf(" ", cursor - 1);
+    if (lastAt > lastSpace && lastAt >= 0) {
+      setMentionQuery({ active: true, text: val.substring(lastAt + 1, cursor), cursor: lastAt });
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleSelectMention = (user: any) => {
+    if (!mentionQuery) return;
+    const before = newComment.substring(0, mentionQuery.cursor);
+    const after = newComment.substring(mentionQuery.cursor + mentionQuery.text.length + 1);
+    setNewComment(`${before}@${user.name} ${after}`);
+    setMentionedIds(prev => new Set([...prev, user._id]));
+    setMentionQuery(null);
   };
 
   const handleAddSubtask = async (e: React.FormEvent) => {
@@ -422,7 +474,8 @@ export default function TaskModal({
                           ))}
                           {!task.assignee_ids?.length && <span className="text-muted/50 text-[10px]">Unassigned</span>}
                         </div>
-                        <select className="absolute inset-0 opacity-0 cursor-pointer w-full" onChange={e => handleToggleAssignee(e.target.value)} value="">
+                        {/* Assign to me button removed */}
+                        <select className="absolute inset-0 opacity-0 z-0 cursor-pointer w-full" onChange={e => handleToggleAssignee(e.target.value)} value="">
                           <option value="" disabled>Toggle member</option>
                           {users.map(u => (
                             <option key={u._id} value={u._id}>
@@ -543,28 +596,84 @@ export default function TaskModal({
                     </h3>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-                    {comments.length === 0 ? (
+                    {comments.filter(c => !c.parent_id).length === 0 ? (
                       <p className="text-[11px] text-muted/50 text-center pt-8">No comments yet.</p>
-                    ) : comments.map(c => (
-                      <div key={c._id} className="flex gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet/30 to-cyan/30 border border-muted/10 flex items-center justify-center text-[9px] font-bold text-white shrink-0 overflow-hidden">
-                          {c.author_id?.avatar ? <img src={c.author_id.avatar} alt="" className="w-full h-full object-cover" /> : c.author_id?.name?.[0]}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-baseline justify-between mb-1">
-                            <span className="text-[11px] font-bold text-foreground">{c.author_id?.name}</span>
-                            <span className="text-[9px] text-muted">{new Date(c.createdAt).toLocaleDateString()}</span>
+                    ) : comments.filter(c => !c.parent_id).map(c => (
+                      <div key={c._id} className="flex flex-col gap-2">
+                        <div className="flex gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet/30 to-cyan/30 border border-muted/10 flex items-center justify-center text-[9px] font-bold text-white shrink-0 overflow-hidden">
+                            {c.author_id?.avatar ? <img src={c.author_id.avatar} alt="" className="w-full h-full object-cover" /> : c.author_id?.name?.[0]}
                           </div>
-                          <p className="text-xs text-foreground/70 bg-muted/5 border border-muted/10 rounded-xl rounded-tl-sm p-3 leading-relaxed">{c.content}</p>
+                          <div className="flex-1">
+                            <div className="flex items-baseline justify-between mb-1">
+                              <span className="text-[11px] font-bold text-foreground">{c.author_id?.name}</span>
+                              <span className="text-[9px] text-muted">{new Date(c.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-xs text-foreground/70 bg-muted/5 border border-muted/10 rounded-xl rounded-tl-sm p-3 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              {c.reactions?.map((r: any) => (
+                                <button key={r.emoji} onClick={() => toggleReaction(c._id, r.emoji)} className={`px-1.5 py-0.5 rounded-full text-[10px] ${r.users.includes(currentUserId) ? "bg-cyan/20 text-cyan" : "bg-muted/10 text-muted"} hover:bg-muted/20 transition-colors flex items-center gap-1`}>
+                                  {r.emoji} <span>{r.users.length}</span>
+                                </button>
+                              ))}
+                              <button onClick={() => toggleReaction(c._id, "👍")} className="px-1 text-muted/40 hover:text-emerald-500 text-[10px] transition-colors"><Smile size={11} /></button>
+                              <button onClick={() => setReplyingTo(c)} className="px-1 text-muted/40 hover:text-cyan text-[10px] flex items-center gap-1 transition-colors ml-1"><CornerDownRight size={10} /> Reply</button>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Replies */}
+                        {comments.filter(rc => rc.parent_id === c._id).map(rc => (
+                          <div key={rc._id} className="flex gap-2.5 ml-8 relative pt-1">
+                            <div className="absolute -left-4 top-4 w-3 border-b border-l border-muted/20 rounded-bl h-6 -translate-y-6" />
+                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet/30 to-cyan/30 border border-muted/10 flex items-center justify-center text-[7px] font-bold text-white shrink-0 overflow-hidden mt-0.5">
+                              {rc.author_id?.avatar ? <img src={rc.author_id.avatar} alt="" className="w-full h-full object-cover" /> : rc.author_id?.name?.[0]}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-baseline justify-between mb-0.5">
+                                <span className="text-[10px] font-bold text-foreground">{rc.author_id?.name}</span>
+                                <span className="text-[8px] text-muted">{new Date(rc.createdAt).toLocaleDateString()}</span>
+                              </div>
+                              <p className="text-[11px] text-foreground/70 bg-muted/5 border border-muted/10 rounded-lg p-2 leading-relaxed whitespace-pre-wrap">{rc.content}</p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {rc.reactions?.map((r: any) => (
+                                  <button key={r.emoji} onClick={() => toggleReaction(rc._id, r.emoji)} className={`px-1.5 py-0.5 rounded-full text-[9px] ${r.users.includes(currentUserId) ? "bg-cyan/20 text-cyan" : "bg-muted/10 text-muted"} hover:bg-muted/20 transition-colors flex items-center gap-1`}>
+                                    {r.emoji} <span>{r.users.length}</span>
+                                  </button>
+                                ))}
+                                <button onClick={() => toggleReaction(rc._id, "👍")} className="px-1 text-muted/40 hover:text-emerald-500 text-[10px] transition-colors"><Smile size={10} /></button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
-                  <div className="p-3 border-t border-muted/10">
+                  <div className="p-3 border-t border-muted/10 relative">
+                    {replyingTo && (
+                      <div className="flex items-center justify-between bg-cyan/5 border border-cyan/10 px-2.5 py-1.5 text-[10px] font-medium text-cyan rounded-lg mb-2">
+                        <span className="flex items-center gap-1.5"><CornerDownRight size={10} /> Replying to {replyingTo.author_id?.name}</span>
+                        <button onClick={() => setReplyingTo(null)} className="hover:text-foreground p-0.5"><X size={10} /></button>
+                      </div>
+                    )}
+                    {mentionQuery?.active && (
+                      <div className="absolute bottom-full left-3 mb-2 bg-surface border border-muted/10 rounded-xl shadow-2xl w-56 overflow-hidden z-20 max-h-48 overflow-y-auto">
+                        <div className="px-3 py-1.5 border-b border-muted/5 text-[9px] font-bold uppercase tracking-wider text-muted/50 bg-muted/5">Mentions</div>
+                        {users.filter(u => u.name.toLowerCase().includes(mentionQuery.text.toLowerCase())).map(u => (
+                          <button key={u._id} onClick={() => handleSelectMention(u)} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted/5 transition-colors text-left font-medium">
+                            <div className="w-4 h-4 rounded-full bg-cyan/20 border border-cyan/10 flex shrink-0 items-center justify-center text-[7px] text-cyan overflow-hidden">{u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : <AtSign size={7} />}</div>
+                            {u.name}
+                          </button>
+                        ))}
+                        {users.filter(u => u.name.toLowerCase().includes(mentionQuery.text.toLowerCase())).length === 0 && (
+                          <div className="px-3 py-3 text-xs text-muted/50 text-center">No users found</div>
+                        )}
+                      </div>
+                    )}
                     <form onSubmit={e => { e.preventDefault(); handlePostComment(); }} className="relative">
                       <textarea
-                        value={newComment} onChange={e => setNewComment(e.target.value)}
-                        placeholder="Comment…" rows={2}
+                        value={newComment} onChange={handleCommentChange}
+                        placeholder="Comment… (Type @ to mention)" rows={2}
                         className="w-full bg-muted/5 border border-muted/10 rounded-xl text-xs text-foreground placeholder:text-muted/40 p-3 pr-10 resize-none focus:outline-none focus:border-cyan/40"
                         onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePostComment(); } }}
                       />

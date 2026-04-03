@@ -433,6 +433,11 @@ function MemberRow({ member, index, onEdit, onDelete }: { member: TeamMember; in
           <div>
             <p className="text-sm font-semibold text-foreground leading-none">{member.name}</p>
             <p className="text-[11px] text-muted mt-0.5">{member.email}</p>
+            {member.employee_id && (
+              <span className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded-md bg-muted/10 border border-muted/15 text-[10px] font-mono font-medium text-muted tracking-wide">
+                {member.employee_id}
+              </span>
+            )}
           </div>
         </div>
       </td>

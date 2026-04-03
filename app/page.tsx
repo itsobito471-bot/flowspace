@@ -279,11 +279,38 @@ const STATS = [
 ];
 
 // ─── FEATURES ─────────────────────────────────────────────────────────────────
+// const FEATURES = [
+//   { title: "Automated Consequence Engine", body: "Define rule trees once. FlowSpace applies tiered penalties, warnings, and escalations automatically — no manual intervention ever." },
+//   { title: "Live Attendance Grid", body: "A real-time heatmap of your entire workforce. Clock-ins, breaks, overtime, and anomalies surface instantly across every timezone." },
+//   { title: "Predictive Absence Analytics", body: "ML models flag burnout patterns and predict absenteeism 14 days in advance, so you act before productivity dips." },
+//   { title: "One-Click HR Dispatch", body: "Generate offer letters, warning notices, and policy updates in seconds. Legally-reviewed templates, custom-branded and instantly sent." },
+// ];
+
 const FEATURES = [
-  { title: "Automated Consequence Engine", body: "Define rule trees once. FlowSpace applies tiered penalties, warnings, and escalations automatically — no manual intervention ever." },
-  { title: "Live Attendance Grid", body: "A real-time heatmap of your entire workforce. Clock-ins, breaks, overtime, and anomalies surface instantly across every timezone." },
-  { title: "Predictive Absence Analytics", body: "ML models flag burnout patterns and predict absenteeism 14 days in advance, so you act before productivity dips." },
-  { title: "One-Click HR Dispatch", body: "Generate offer letters, warning notices, and policy updates in seconds. Legally-reviewed templates, custom-branded and instantly sent." },
+  {
+    title: "Automated Consequence Engine",
+    body: "Enforce accountability effortlessly. FlowSpace automatically issues demerits, calculates 'Loss of Pay', and triggers real-time notifications for policy violations with zero manual HR intervention.",
+    align: "left",
+    step: 0
+  },
+  {
+    title: "Live 'God View' Attendance",
+    body: "Monitor your workforce instantly. Employees check in via geolocation-verified web portals, while Admins get a real-time command center showing exactly who is present, late, or absent today.",
+    align: "right",
+    step: 1
+  },
+  {
+    title: "Deep Work Task Engine",
+    body: "Why pay for ClickUp? FlowSpace includes a deeply integrated project manager with infinite nested sub-tasks, Editor.js rich text, and Kanban boards natively tied to employee attendance.",
+    align: "left",
+    step: 2
+  },
+  {
+    title: "Smart 'Comp-Off' Rewards",
+    body: "Balance strict rules with automatic rewards. When employees log weekend or holiday shifts, the system automatically queues 'Compensatory Off' leave days for admin approval.",
+    align: "right",
+    step: 3
+  },
 ];
 
 // ─── ENQUIRY FORM ─────────────────────────────────────────────────────────────
@@ -375,30 +402,30 @@ export default function FlowSpaceLanding() {
   // Features  (0.28–0.60): anchor on LEFT side (-26vw)
   // Fade-out  (0.60–1):  drift back to center then away
   const assetX = useTransform(smoothProgress,
-    [0,      0.12,     0.22,     0.28,     0.58,     0.68,  1   ],
+    [0, 0.12, 0.22, 0.28, 0.58, 0.68, 1],
     isMobile
-      ? ["0vw",  "0vw",  "0vw",  "0vw",  "0vw",  "0vw",  "0vw"]
-      : ["0vw",  "0vw",  "28vw", "28vw", "-26vw", "-26vw", "0vw"]
+      ? ["0vw", "0vw", "0vw", "0vw", "0vw", "0vw", "0vw"]
+      : ["0vw", "0vw", "28vw", "28vw", "-26vw", "-26vw", "0vw"]
   );
   const assetY = useTransform(smoothProgress,
-    [0,      0.28,    0.60,    1    ],
+    [0, 0.28, 0.60, 1],
     isMobile
-      ? ["0vh",  "-5vh",  "-5vh",  "-5vh"]
-      : ["0vh",  "5vh",   "8vh",   "5vh"]
+      ? ["0vh", "-5vh", "-5vh", "-5vh"]
+      : ["0vh", "5vh", "8vh", "5vh"]
   );
   const assetScale = useTransform(smoothProgress,
-    [0,    0.12, 0.22,  0.28,  0.58,  0.68, 1   ],
-    isMobile ? [0.65, 0.5,  0.5,   0.5,   0.45,  0.35, 0.3]
-             : [1,    1,    0.72,  0.72,  0.82,  0.45, 0.3]
+    [0, 0.12, 0.22, 0.28, 0.58, 0.68, 1],
+    isMobile ? [0.65, 0.5, 0.5, 0.5, 0.45, 0.35, 0.3]
+      : [1, 1, 0.72, 0.72, 0.82, 0.45, 0.3]
   );
   const assetOpacity = useTransform(smoothProgress,
-    [0,    0.08,  0.60,  0.72, 1  ],
-    isMobile ? [0.13, 0.1,  0.08,  0.04, 0]
-             : [1,    1,    0.92,  0.28, 0]
+    [0, 0.08, 0.60, 0.72, 1],
+    isMobile ? [0.13, 0.1, 0.08, 0.04, 0]
+      : [1, 1, 0.92, 0.28, 0]
   );
   const assetRotate = useTransform(smoothProgress,
     [0, 0.22, 0.28, 0.60, 1],
-    [0,  4,   -8,    3,   6]
+    [0, 4, -8, 3, 6]
   );
 
   // colors

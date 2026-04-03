@@ -7,7 +7,7 @@ import {
   LayoutGrid, List, Plus, Search, Loader2, Lock,
   CheckCircle2, Clock, CircleDashed, Eye, ChevronRight,
   Layers, FileText, X, Sparkles, Menu, ChevronDown,
-  UserPlus, Calendar, Flag, GitMerge, Trash2
+  UserPlus, Calendar, Flag, GitMerge, Trash2, Settings2, GripVertical, Circle, Pencil
 } from "lucide-react";
 import TaskModal from "@/src/components/tasks/TaskModal";
 
@@ -18,11 +18,14 @@ const STATUS_ICONS: Record<string, any> = {
 };
 
 function statusColor(color: string) {
+  // If already a hex/rgb color, pass through directly (custom statuses)
+  if (color && (color.startsWith("#") || color.startsWith("rgb"))) return color;
   const map: Record<string, string> = {
     "text-green-400": "#4ade80", "text-blue-400": "#60a5fa",
     "text-yellow-400": "#facc15", "text-red-400": "#f87171",
     "text-purple-400": "#c084fc", "text-cyan-400": "#22d3ee",
-    gray: "#6b7280",
+    "text-amber-400": "#fbbf24", "text-emerald-400": "#34d399",
+    "text-muted": "#6b7280", gray: "#6b7280",
   };
   return map[color] || "#6b7280";
 }
@@ -65,19 +68,23 @@ function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; user
       <AnimatePresence>
         {open && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
-            className="absolute top-full mt-1 left-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[160px] py-1 overflow-hidden">
-            {users.map(u => {
-              const checked = assigneeIds.includes(u._id);
-              return (
-                <button key={u._id} onClick={() => toggle(u._id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${checked ? "text-foreground" : "text-muted"}`}>
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan/40 to-violet/30 flex items-center justify-center text-[7px] font-bold text-white overflow-hidden shrink-0">
-                    {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : u.name?.[0]}
-                  </div>
-                  <span className="flex-1 truncate font-medium">{u.name}</span>
-                  {checked && <div className="w-1.5 h-1.5 rounded-full bg-cyan shrink-0" />}
-                </button>
-              );
-            })}
+            className="absolute top-full mt-1 left-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[160px] py-1 max-h-48 overflow-y-auto">
+            {users.length === 0 ? (
+              <div className="px-3 py-2 text-[10px] text-muted text-center italic">No users found</div>
+            ) : (
+              users.map(u => {
+                const checked = assigneeIds.includes(u._id) || assigneeIds.includes(u);
+                return (
+                  <button key={u._id} onClick={() => toggle(u._id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${checked ? "text-foreground" : "text-muted"}`}>
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan/40 to-violet/30 flex items-center justify-center text-[7px] font-bold text-white overflow-hidden shrink-0">
+                      {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : u.name?.[0]}
+                    </div>
+                    <span className="flex-1 truncate font-medium">{u.name}</span>
+                    {checked && <div className="w-1.5 h-1.5 rounded-full bg-cyan shrink-0" />}
+                  </button>
+                );
+              })
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -223,7 +230,7 @@ function ApprovalScreen({ page, onApprove, onReject }: { page: any; onApprove: (
 
 // ─── List Row ────────────────────────────────────────────────────────────────
 function ListRow({
-  task, depth, activeStatuses, users, onOpen, onUpdate, allTasks, onExpand, expanded, addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle, onDelete
+  task, depth, activeStatuses, users, onOpen, onUpdate, allTasks, onExpand, expanded, addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle, onDelete, currentUserId
 }: {
   task: any; depth: number; activeStatuses: any[]; users: any[];
   onOpen: (id: string) => void; onUpdate: (t: any) => void;
@@ -231,7 +238,7 @@ function ListRow({
   addingSubtaskFor: string | null; setAddingSubtaskFor: (id: string | null) => void;
   handleCreateTask: (e: React.FormEvent, statusOverride?: string, parentId?: string) => Promise<void>;
   isCreating: boolean; newTaskTitle: string; setNewTaskTitle: (v: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void; currentUserId: string | null;
 }) {
   const subtaskCount = allTasks.filter(t => String(t.parent_task_id) === String(task._id)).length;
   const isExpanded = expanded.has(String(task._id));
@@ -298,7 +305,7 @@ function ListRow({
         )}
 
         {/* Assignee */}
-        <div className="shrink-0 w-20 flex justify-center" onClick={e => e.stopPropagation()}>
+        <div className="shrink-0 w-20 flex justify-center items-center gap-1" onClick={e => e.stopPropagation()}>
           <AssigneePicker
             assignees={task.assignee_ids || []}
             users={users}
@@ -343,6 +350,7 @@ function ListRow({
               newTaskTitle={newTaskTitle}
               setNewTaskTitle={setNewTaskTitle}
               onDelete={onDelete}
+              currentUserId={currentUserId}
             />
           ))
         }
@@ -364,7 +372,7 @@ function ListRow({
 function GroupedListView({
   tasks, activeStatuses, users, onOpen, onTaskUpdated,
   addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle,
-  addingForStatus, setAddingForStatus, onDelete
+  addingForStatus, setAddingForStatus, onDelete, currentUserId
 }: {
   tasks: any[]; activeStatuses: any[]; users: any[];
   onOpen: (id: string) => void; onTaskUpdated: (t: any) => void;
@@ -372,7 +380,7 @@ function GroupedListView({
   handleCreateTask: (e: React.FormEvent, statusOverride?: string, parentId?: string) => Promise<void>;
   isCreating: boolean; newTaskTitle: string; setNewTaskTitle: (v: string) => void;
   addingForStatus: string | null; setAddingForStatus: (status: string | null) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void; currentUserId: string | null;
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -437,6 +445,7 @@ function GroupedListView({
                     newTaskTitle={newTaskTitle}
                     setNewTaskTitle={setNewTaskTitle}
                     onDelete={onDelete}
+                    currentUserId={currentUserId}
                   />
                 ))}
 
@@ -473,6 +482,7 @@ export default function TasksPage() {
   const isAdmin =
     (session?.user as any)?.role?.level === "ADMIN" ||
     (session?.user as any)?.userType === "SUPER_ADMIN";
+  const currentUserId = (session?.user as any)?.id || null;
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -498,9 +508,26 @@ export default function TasksPage() {
 
   const [isCreateBoardOpen, setIsCreateBoardOpen] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
+  const [newBoardMembers, setNewBoardMembers] = useState<string[]>([]);
   const [isRequestPageOpen, setIsRequestPageOpen] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [newPageDesc, setNewPageDesc] = useState("");
+
+  const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
+  const [editBoardName, setEditBoardName] = useState("");
+  const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
+  const [manageMembersBoardId, setManageMembersBoardId] = useState<string | null>(null);
+
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editPageName, setEditPageName] = useState("");
+  // Ref keeps the committed editing context for onBlur — avoids React state timing races
+  const editingPageRef = useRef<{ id: string; name: string } | null>(null);
+
+  const [isManageStatusesOpen, setIsManageStatusesOpen] = useState(false);
+  const [manageStatusesBoardId, setManageStatusesBoardId] = useState<string | null>(null);
+  const [editingStatuses, setEditingStatuses] = useState<{ name: string; color: string; order: number }[]>([]);
+  const [newStatusName, setNewStatusName] = useState("");
+  const [newStatusColor, setNewStatusColor] = useState("#6b7280");
 
   // ── Fetchers ──────────────────────────────────────────────────────────────────
   const fetchBoards = useCallback(async () => {
@@ -513,7 +540,7 @@ export default function TasksPage() {
   }, []);
   const fetchUsers = useCallback(async () => {
     const res = await fetch("/api/team?limit=100"); const json = await res.json();
-    if (json.success && Array.isArray(json.data?.users)) setUsers(json.data.users);
+    if (json.success && Array.isArray(json.data)) setUsers(json.data);
   }, []);
   const fetchPages = useCallback(async (boardId: string) => {
     const res = await fetch(`/api/pages?boardId=${boardId}`); const json = await res.json();
@@ -542,9 +569,46 @@ export default function TasksPage() {
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBoardName.trim()) return;
-    const res = await fetch("/api/boards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newBoardName.trim(), members: users.map(u => u._id) }) });
+    const res = await fetch("/api/boards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newBoardName.trim(), members: newBoardMembers }) });
     const json = await res.json();
-    if (json.success) { setBoards(prev => [...prev, json.data]); setSelectedBoardId(json.data._id); setExpandedBoards(prev => new Set([...prev, json.data._id])); setNewBoardName(""); setIsCreateBoardOpen(false); }
+    if (json.success) { setBoards(prev => [...prev, json.data]); setSelectedBoardId(json.data._id); setExpandedBoards(prev => new Set([...prev, json.data._id])); setNewBoardName(""); setNewBoardMembers([]); setIsCreateBoardOpen(false); }
+  };
+
+  const handleUpdateBoard = async (id: string, updates: any) => {
+    // Close rename input immediately so switching boards/renames doesn't race
+    if (updates.name !== undefined) {
+      setEditingBoardId(prev => prev === id ? null : prev);
+      setEditBoardName("");
+    }
+    const res = await fetch(`/api/boards/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
+    const json = await res.json();
+    if (json.success) {
+      setBoards(prev => prev.map(b => b._id === id ? { ...b, ...updates, ...(json.data || {}) } : b));
+      setIsManageMembersOpen(false);
+      setManageMembersBoardId(null);
+      setIsManageStatusesOpen(false);
+      setManageStatusesBoardId(null);
+    }
+  };
+
+  const handleSaveStatuses = () => {
+    if (!manageStatusesBoardId) return;
+    const ordered = editingStatuses.map((s, i) => ({ ...s, order: i }));
+    handleUpdateBoard(manageStatusesBoardId, { statuses: ordered });
+  };
+
+  const handleUpdatePage = async (id: string, name: string) => {
+    // Always close the input immediately — no async wait
+    setEditingPageId(null);
+    setEditPageName("");
+    editingPageRef.current = null;
+    if (!name.trim()) return;
+    const res = await fetch(`/api/pages/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) });
+    const json = await res.json();
+    if (json.success) {
+      setPages(prev => prev.map(p => p._id === id ? { ...p, name: name.trim() } : p));
+      setSelectedPage((prev: any) => prev?._id === id ? { ...prev, name: name.trim() } : prev);
+    }
   };
 
   const handleRequestPage = async (e: React.FormEvent) => {
@@ -621,22 +685,50 @@ export default function TasksPage() {
           const isActiveBrd = selectedBoardId === board._id;
           return (
             <div key={board._id}>
-              <button
-                onClick={() => {
-                  setSelectedBoardId(board._id);
-                  setExpandedBoards(prev => { const n = new Set(prev); isExpanded ? n.delete(board._id) : n.add(board._id); return n; });
-                }}
-                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all ${isActiveBrd ? "bg-cyan/10 text-cyan" : "text-muted hover:text-foreground hover:bg-muted/5"}`}
-              >
-                <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}>
-                  <ChevronRight size={11} className="shrink-0" />
-                </motion.div>
-                <Layers size={12} className="shrink-0" />
-                <span className="flex-1 text-left truncate">{board.name}</span>
-                {isAdmin && pendingCount > 0 && isActiveBrd && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 font-bold animate-pulse">{pendingCount}</span>
+              <div className={`group/board flex items-center gap-0.5 rounded-xl transition-all ${isActiveBrd ? "bg-cyan/10" : "hover:bg-muted/5"}`}>
+                {/* Chevron toggle */}
+                <button
+                  onClick={() => { setSelectedBoardId(board._id); setExpandedBoards(prev => { const n = new Set(prev); isExpanded ? n.delete(board._id) : n.add(board._id); return n; }); }}
+                  className={`p-2 rounded-xl shrink-0 transition-colors ${isActiveBrd ? "text-cyan" : "text-muted hover:text-foreground"}`}
+                >
+                  <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}><ChevronRight size={11} /></motion.div>
+                </button>
+
+                {/* Board name — button when viewing, div+input when editing */}
+                {editingBoardId === board._id ? (
+                  <div className="flex-1 flex items-center gap-1.5 min-w-0 py-1.5">
+                    <Layers size={11} className="shrink-0 text-cyan" />
+                    <input
+                      autoFocus
+                      value={editBoardName}
+                      onChange={e => setEditBoardName(e.target.value)}
+                      onBlur={() => { if (editBoardName.trim() && editBoardName !== board.name) handleUpdateBoard(board._id, { name: editBoardName }); else setEditingBoardId(null); }}
+                      onKeyDown={e => { if (e.key === "Enter") handleUpdateBoard(board._id, { name: editBoardName }); if (e.key === "Escape") setEditingBoardId(null); }}
+                      className="flex-1 min-w-0 bg-background border border-cyan/40 rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setSelectedBoardId(board._id); setExpandedBoards(prev => { const n = new Set(prev); isExpanded ? n.delete(board._id) : n.add(board._id); return n; }); }}
+                    className={`flex-1 flex items-center gap-1.5 min-w-0 py-2 text-xs font-semibold transition-colors ${isActiveBrd ? "text-cyan" : "text-muted hover:text-foreground"}`}
+                  >
+                    <Layers size={11} className="shrink-0" />
+                    <span className="truncate text-left">{board.name}</span>
+                    {isAdmin && pendingCount > 0 && isActiveBrd && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 font-bold animate-pulse shrink-0">{pendingCount}</span>
+                    )}
+                  </button>
                 )}
-              </button>
+
+                {/* Admin action icons */}
+                {isAdmin && editingBoardId !== board._id && (
+                  <div className="flex items-center gap-0.5 pr-1 opacity-0 group-hover/board:opacity-100 transition-all shrink-0">
+                    <button onClick={e => { e.stopPropagation(); setEditingBoardId(board._id); setEditBoardName(board.name); }} className="p-1 rounded-md text-muted hover:text-foreground transition-colors" title="Rename"><Pencil size={10} /></button>
+                    <button onClick={e => { e.stopPropagation(); setIsManageMembersOpen(true); setManageMembersBoardId(board._id); setNewBoardMembers(board.members?.map((m: any) => typeof m === "string" ? m : m._id) || []); }} className="p-1 rounded-md text-muted hover:text-cyan transition-colors" title="Members"><UserPlus size={10} /></button>
+                    <button onClick={e => { e.stopPropagation(); setIsManageStatusesOpen(true); setManageStatusesBoardId(board._id); setEditingStatuses(board.statuses ? [...board.statuses].sort((a: any, b: any) => a.order - b.order) : []); setNewStatusName(""); setNewStatusColor("#6b7280"); }} className="p-1 rounded-md text-muted hover:text-violet transition-colors" title="Statuses"><Settings2 size={10} /></button>
+                  </div>
+                )}
+              </div>
               <AnimatePresence>
                 {isExpanded && isActiveBrd && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring} className="overflow-hidden ml-4 pl-2 border-l border-muted/10 mt-0.5 mb-0.5 space-y-0.5">
@@ -644,17 +736,60 @@ export default function TasksPage() {
                       const isPending = page.approval_status === "PENDING";
                       const isActivePg = selectedPageId === page._id;
                       const canClick = isAdmin || !isPending;
+                      const isEditingThis = editingPageId === page._id;
                       return (
                         <div key={page._id} className="relative group/page">
-                          <button
-                            onClick={() => canClick && handleSelectPage(page)}
-                            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${isActivePg ? "bg-cyan/10 text-cyan font-semibold" : isPending ? "text-amber-500/70 cursor-not-allowed" : "text-muted hover:text-foreground hover:bg-muted/5"} ${!canClick ? "pointer-events-none" : ""}`}
-                          >
-                            <FileText size={11} className="shrink-0" />
-                            <span className="flex-1 text-left truncate">{page.name}</span>
-                            {isPending && isAdmin && <span className="text-[8px] px-1 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 font-bold animate-pulse">Review</span>}
-                            {isPending && !isAdmin && <Lock size={10} className="text-amber-500/60 animate-pulse" />}
-                          </button>
+                          <div className={`flex items-center gap-0.5 rounded-lg transition-all ${isActivePg ? "bg-cyan/10" : isPending ? "" : "hover:bg-muted/5"}`}>
+                            {isEditingThis ? (
+                              <div className="flex-1 flex items-center gap-1.5 pl-2.5 pr-1 py-1">
+                                <FileText size={11} className="shrink-0 text-cyan" />
+                                <input
+                                  autoFocus
+                                  value={editPageName}
+                                  onChange={e => { setEditPageName(e.target.value); if (editingPageRef.current) editingPageRef.current.name = e.target.value; }}
+                                  onBlur={() => {
+                                    const ref = editingPageRef.current;
+                                    if (ref && ref.name.trim() && ref.name !== page.name) {
+                                      handleUpdatePage(ref.id, ref.name);
+                                    } else {
+                                      setEditingPageId(null);
+                                      setEditPageName("");
+                                      editingPageRef.current = null;
+                                    }
+                                  }}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") { if (editingPageRef.current) handleUpdatePage(editingPageRef.current.id, editingPageRef.current.name); }
+                                    if (e.key === "Escape") { setEditingPageId(null); setEditPageName(""); editingPageRef.current = null; }
+                                  }}
+                                  className="flex-1 min-w-0 bg-background border border-cyan/40 rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none"
+                                />
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => canClick && handleSelectPage(page)}
+                                className={`flex-1 flex items-center gap-2 pl-2.5 pr-1 py-1.5 text-xs transition-colors min-w-0 ${isActivePg ? "text-cyan font-semibold" : isPending ? "text-amber-500/70 cursor-not-allowed" : "text-muted hover:text-foreground"} ${!canClick ? "pointer-events-none" : ""}`}
+                              >
+                                <FileText size={11} className="shrink-0" />
+                                <span className="flex-1 text-left truncate">{page.name}</span>
+                                {isPending && isAdmin && <span className="text-[8px] px-1 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 font-bold animate-pulse shrink-0">Review</span>}
+                                {isPending && !isAdmin && <Lock size={10} className="text-amber-500/60 animate-pulse shrink-0" />}
+                              </button>
+                            )}
+                            {canClick && !isPending && !isEditingThis && (
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  editingPageRef.current = { id: page._id, name: page.name };
+                                  setEditingPageId(page._id);
+                                  setEditPageName(page.name);
+                                }}
+                                className="p-1 mr-1 rounded-md text-muted hover:text-foreground opacity-0 group-hover/page:opacity-100 transition-all shrink-0"
+                                title="Rename project"
+                              >
+                                <Pencil size={10} />
+                              </button>
+                            )}
+                          </div>
                           {isPending && !isAdmin && (
                             <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/page:block pointer-events-none">
                               <div className="bg-surface border border-muted/15 rounded-lg px-2.5 py-1.5 text-[10px] text-foreground shadow-xl whitespace-nowrap">Pending Admin Approval</div>
@@ -704,9 +839,17 @@ export default function TasksPage() {
             <h1 className="text-sm font-bold text-foreground flex items-center gap-1.5 truncate">
               {selectedPage ? (
                 <>
-                  <span className="text-muted hidden sm:inline truncate max-w-[80px]">{boards.find(b => b._id === selectedBoardId)?.name}</span>
+                  <span className="text-muted hidden sm:inline truncate max-w-[80px]" onDoubleClick={() => { if (isAdmin && selectedBoardId) { setEditingBoardId(selectedBoardId); setEditBoardName(boards.find(b => b._id === selectedBoardId)?.name || ""); } }} title="Double click to rename">
+                    {editingBoardId === selectedBoardId ? (
+                      <input autoFocus value={editBoardName} onChange={e => setEditBoardName(e.target.value)} onBlur={() => handleUpdateBoard(selectedBoardId!, { name: editBoardName })} onKeyDown={e => { if (e.key === "Enter") handleUpdateBoard(selectedBoardId!, { name: editBoardName }); if (e.key === "Escape") setEditingBoardId(null); }} className="bg-transparent border-b border-cyan/40 text-foreground focus:outline-none w-[80px]" />
+                    ) : boards.find(b => b._id === selectedBoardId)?.name}
+                  </span>
                   <ChevronRight size={11} className="text-muted/40 hidden sm:inline shrink-0" />
-                  <span className="truncate max-w-[120px] sm:max-w-none">{selectedPage.name}</span>
+                  <span className="truncate max-w-[120px] sm:max-w-none" onDoubleClick={() => { if (isAdmin || !isPendingPage) { setEditingPageId(selectedPage._id); setEditPageName(selectedPage.name); } }} title="Double click to rename">
+                    {editingPageId === selectedPage._id ? (
+                      <input autoFocus value={editPageName} onChange={e => setEditPageName(e.target.value)} onBlur={() => handleUpdatePage(selectedPage._id, editPageName)} onKeyDown={e => { if (e.key === "Enter") handleUpdatePage(selectedPage._id, editPageName); if (e.key === "Escape") setEditingPageId(null); }} className="bg-transparent border-b border-cyan/40 text-foreground focus:outline-none w-[120px]" />
+                    ) : selectedPage.name}
+                  </span>
                   {isPendingPage && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold shrink-0">PENDING</span>}
                 </>
               ) : "Tasks"}
@@ -754,6 +897,7 @@ export default function TasksPage() {
                     addingForStatus={addingForStatus}
                     setAddingForStatus={setAddingForStatus}
                     onDelete={handleDeleteTask}
+                    currentUserId={currentUserId}
                   />
                 ) : (
                   // Kanban
@@ -810,11 +954,44 @@ export default function TasksPage() {
               <div className="flex items-center gap-3 mb-5"><div className="w-8 h-8 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center"><Layers size={14} className="text-cyan" /></div><h3 className="text-base font-bold text-foreground">New Board</h3></div>
               <form onSubmit={handleCreateBoard} className="space-y-4">
                 <input autoFocus value={newBoardName} onChange={e => setNewBoardName(e.target.value)} placeholder="Board name…" className="w-full bg-muted/5 border border-muted/15 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40" />
-                <div className="flex gap-2 justify-end">
+                
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-muted/60 tracking-wider">Members ({newBoardMembers.length})</span>
+                  <div className="flex items-center gap-2 flex-wrap h-10 px-3 bg-muted/5 border border-muted/15 rounded-xl">
+                    <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} users={users} onChange={setNewBoardMembers} />
+                    <span className="text-[10px] text-muted line-clamp-1 flex-1">{newBoardMembers.length > 0 ? "Users selected" : "Click to select members"}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-2">
                   <button type="button" onClick={() => setIsCreateBoardOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors">Cancel</button>
                   <button type="submit" disabled={!newBoardName.trim()} className="btn-primary px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40">Create</button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isManageMembersOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsManageMembersOpen(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }} transition={spring} className="relative bg-surface border border-muted/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+              <div className="flex items-center gap-3 mb-5"><div className="w-8 h-8 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center"><UserPlus size={14} className="text-cyan" /></div><h3 className="text-base font-bold text-foreground">Manage Members</h3></div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-muted/60 tracking-wider">Members ({newBoardMembers.length})</span>
+                  <div className="flex items-center gap-2 flex-wrap min-h-[40px] px-3 border border-muted/15 rounded-xl bg-muted/5">
+                    <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} users={users} onChange={setNewBoardMembers} />
+                    <span className="text-[10px] text-muted ml-2">Add or remove users</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setIsManageMembersOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors">Cancel</button>
+                  <button type="button" onClick={() => handleUpdateBoard(manageMembersBoardId!, { members: newBoardMembers })} className="btn-primary px-5 py-2 rounded-xl text-sm font-bold">Save</button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
@@ -840,6 +1017,104 @@ export default function TasksPage() {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isManageStatusesOpen && (() => {
+          const STATUS_COLORS = [
+            { hex: "#6b7280", label: "Gray" },
+            { hex: "#22d3ee", label: "Cyan" },
+            { hex: "#a78bfa", label: "Violet" },
+            { hex: "#f59e0b", label: "Amber" },
+            { hex: "#4ade80", label: "Green" },
+            { hex: "#f87171", label: "Red" },
+            { hex: "#60a5fa", label: "Blue" },
+            { hex: "#e879f9", label: "Pink" },
+          ];
+          return (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsManageStatusesOpen(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+              <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }} transition={spring} className="relative bg-surface border border-muted/15 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-muted/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-violet/10 border border-violet/20 flex items-center justify-center"><Settings2 size={14} className="text-violet" /></div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">Manage Statuses</h3>
+                      <p className="text-[10px] text-muted mt-0.5">{boards.find(b => b._id === manageStatusesBoardId)?.name}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsManageStatusesOpen(false)} className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-muted/10 transition-all"><X size={15} /></button>
+                </div>
+
+                {/* Status List */}
+                <div className="p-5 space-y-2 max-h-72 overflow-y-auto no-scrollbar">
+                  {editingStatuses.length === 0 && (
+                    <div className="text-center py-6 text-muted text-xs italic">No statuses yet. Add one below.</div>
+                  )}
+                  {editingStatuses.map((status, idx) => (
+                    <motion.div key={idx} layout className="group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-muted/10 bg-muted/5 hover:border-muted/20 transition-all">
+                      <GripVertical size={13} className="text-muted/30 cursor-grab shrink-0" />
+                      <div className="w-3 h-3 rounded-full shrink-0 border border-white/20" style={{ backgroundColor: status.color }} />
+                      <span className="flex-1 text-xs font-semibold text-foreground font-mono tracking-wide">{status.name}</span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* move up/down */}
+                        <button disabled={idx === 0} onClick={() => setEditingStatuses(prev => { const a = [...prev]; [a[idx-1], a[idx]] = [a[idx], a[idx-1]]; return a; })} className="p-1 rounded text-muted hover:text-foreground disabled:opacity-20 transition-colors text-[9px]">↑</button>
+                        <button disabled={idx === editingStatuses.length - 1} onClick={() => setEditingStatuses(prev => { const a = [...prev]; [a[idx], a[idx+1]] = [a[idx+1], a[idx]]; return a; })} className="p-1 rounded text-muted hover:text-foreground disabled:opacity-20 transition-colors text-[9px]">↓</button>
+                        <button onClick={() => setEditingStatuses(prev => prev.filter((_, i) => i !== idx))} className="p-1 rounded text-muted hover:text-red-500 transition-colors"><Trash2 size={11} /></button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Add New Status */}
+                <div className="px-5 pb-5 space-y-3 border-t border-muted/10 pt-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted/60">Add Status</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={newStatusName}
+                      onChange={e => setNewStatusName(e.target.value.toUpperCase())}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && newStatusName.trim()) {
+                          setEditingStatuses(prev => [...prev, { name: newStatusName.trim(), color: newStatusColor, order: prev.length }]);
+                          setNewStatusName("");
+                        }
+                      }}
+                      placeholder="STATUS_NAME"
+                      className="flex-1 bg-muted/5 border border-muted/15 rounded-xl px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40"
+                    />
+                    <button
+                      disabled={!newStatusName.trim()}
+                      onClick={() => { if (!newStatusName.trim()) return; setEditingStatuses(prev => [...prev, { name: newStatusName.trim(), color: newStatusColor, order: prev.length }]); setNewStatusName(""); }}
+                      className="px-3 py-2 rounded-xl bg-cyan/10 border border-cyan/20 text-cyan text-xs font-bold hover:bg-cyan/15 disabled:opacity-40 transition-all"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </div>
+                  {/* Color picker */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {STATUS_COLORS.map(c => (
+                      <button
+                        key={c.hex}
+                        onClick={() => setNewStatusColor(c.hex)}
+                        title={c.label}
+                        className={`w-5 h-5 rounded-full border-2 transition-all ${newStatusColor === c.hex ? "border-white scale-125" : "border-transparent opacity-60 hover:opacity-100"}`}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    ))}
+                    <span className="text-[9px] text-muted ml-1">pick color</span>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-2 justify-end px-5 pb-5">
+                  <button onClick={() => setIsManageStatusesOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors">Cancel</button>
+                  <button onClick={handleSaveStatuses} className="btn-primary px-5 py-2 rounded-xl text-sm font-bold">Save Statuses</button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       <TaskModal

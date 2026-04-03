@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/src/lib/auth";
 import dbConnect from "@/src/lib/mongodb";
-import { BoardPage } from "@/src/lib/models/BoardPage";
+import { Board } from "@/src/lib/models/Board";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -12,39 +12,29 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const userRole = (session.user as any)?.role?.level;
     const userType = (session.user as any)?.userType as string;
     const isAdmin = userRole === "ADMIN" || userType === "SUPER_ADMIN";
-    
+
+    if (!isAdmin) {
+      return NextResponse.json({ success: false, message: "Only Admins can edit boards." }, { status: 403 });
+    }
+
     const { id } = await params;
     const orgId = session.user.orgId as string;
-    const userId = (session.user as any).id as string;
     const body = await request.json();
 
     await dbConnect();
-    
-    // Check if the user is a board member if they aren't an admin
-    const page = await BoardPage.findOne({ _id: id, organization_id: orgId });
-    if (!page) return NextResponse.json({ success: false, message: "Project not found" }, { status: 404 });
 
-    if (!isAdmin) {
-      if (body.approval_status) {
-        return NextResponse.json({ success: false, message: "Only Admins can approve or reject projects." }, { status: 403 });
-      }
-      // Assuming they might be trying to update the name
-      // We need to check if they belong to the associated Board.
-      const BoardModel = require("@/src/lib/models/Board").Board;
-      const board = await BoardModel.findOne({ _id: page.board_id, members: userId });
-      
-      if (!board) {
-        return NextResponse.json({ success: false, message: "You are not a member of this board" }, { status: 403 });
-      }
-    }
+    const allowedUpdates: any = {};
+    if (body.name !== undefined) allowedUpdates.name = body.name;
+    if (body.members !== undefined) allowedUpdates.members = body.members;
+    if (body.statuses !== undefined) allowedUpdates.statuses = body.statuses;
 
-    const updated = await BoardPage.findOneAndUpdate(
+    const updated = await Board.findOneAndUpdate(
       { _id: id, organization_id: orgId },
-      { $set: body },
+      { $set: allowedUpdates },
       { new: true }
-    );
+    ).lean();
 
-    if (!updated) return NextResponse.json({ success: false, message: "Project not found" }, { status: 404 });
+    if (!updated) return NextResponse.json({ success: false, message: "Board not found" }, { status: 404 });
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
@@ -62,16 +52,16 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const isAdmin = userRole === "ADMIN" || userType === "SUPER_ADMIN";
 
     if (!isAdmin) {
-      return NextResponse.json({ success: false, message: "Only Admins can delete projects." }, { status: 403 });
+      return NextResponse.json({ success: false, message: "Only Admins can delete boards." }, { status: 403 });
     }
 
     const { id } = await params;
     const orgId = session.user.orgId as string;
     await dbConnect();
 
-    await BoardPage.findOneAndDelete({ _id: id, organization_id: orgId });
+    await Board.findOneAndDelete({ _id: id, organization_id: orgId });
 
-    return NextResponse.json({ success: true, message: "Project deleted." });
+    return NextResponse.json({ success: true, message: "Board deleted." });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }

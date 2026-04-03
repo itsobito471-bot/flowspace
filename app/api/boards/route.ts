@@ -14,11 +14,14 @@ export async function GET(request: Request) {
     const userId = (session.user as any).id as string;
     const userType = (session.user as any).userType as string;
 
+    const userRole = (session.user as any)?.role?.level;
+    const isAdmin = userRole === "ADMIN" || userType === "SUPER_ADMIN";
+
     await dbConnect();
     
-    // Access control: only assigned boards accessible, unless SUPER_ADMIN
+    // Access control: only assigned boards accessible, unless ADMIN or SUPER_ADMIN
     const query: any = { organization_id: orgId };
-    if (userType !== "SUPER_ADMIN") {
+    if (!isAdmin) {
       query.$or = [
         { creator_id: userId },
         { members: userId }
@@ -27,27 +30,7 @@ export async function GET(request: Request) {
 
     let boards = await Board.find(query).sort({ createdAt: 1 }).lean();
 
-    // Auto-create a default board if none exists
-    if (!boards || boards.length === 0) {
-      const defaultBoard = await Board.create({
-        name: "General Board",
-        organization_id: orgId,
-        creator_id: userId,
-        members: [userId]
-      });
-      
-      // Assign orphaned tasks to this board if any
-      await Task.updateMany(
-        { organization_id: orgId, board_id: { $exists: false } }, 
-        { $set: { board_id: defaultBoard._id } }
-      );
-      await Task.updateMany(
-        { organization_id: orgId, board_id: null }, 
-        { $set: { board_id: defaultBoard._id } }
-      );
-      
-      boards = [defaultBoard.toObject()];
-    }
+
 
     return NextResponse.json({ success: true, data: boards });
   } catch (error: any) {
