@@ -26,8 +26,9 @@ export async function GET(request: Request) {
     const myOrgId = session.user.orgId;
     const myUserId = (session.user as any).id;
 
-    const filter: any = { 
-      organization_id: myOrgId
+    // Scope strictly to this org; exclude super-admins who have no org or are platform-level
+    const filter: any = {
+      organization_id: myOrgId,
     };
 
     const { searchParams } = new URL(request.url);
@@ -37,28 +38,42 @@ export async function GET(request: Request) {
 
     const [users, totalCount] = await Promise.all([
       User.find(filter)
-        .populate("role_id", "title department level")
+        .populate({
+          path: "role_id",
+          select: "title department level",
+          // exclude any user whose role is SUPER_ADMIN
+          match: { level: { $ne: "SUPER_ADMIN" } },
+        })
         .select("name email is_active role_id createdAt employee_id date_of_joining avatar")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean()
         .exec(),
-      User.countDocuments({}),
+      // ✅ count uses the SAME org filter — not {} which would count all users globally
+      User.countDocuments(filter),
     ]);
 
+    // After populate with match, users whose role is SUPER_ADMIN will have role_id = null.
+    // Filter those out so super-admins never appear in the team list.
+    const teamUsers = (users as any[]).filter(
+      (u) => !u.role_id || (u.role_id as any).level !== "SUPER_ADMIN"
+    );
+
     const today = getTodayDate();
-    const userIds = users.map(u => u._id);
+    const userIds = teamUsers.map(u => u._id);
     const attendances = await Attendance.find({ date: today, user_id: { $in: userIds } }).sort({ check_in: -1 }).lean();
 
-    const usersWithAttendance = users.map(u => {
+    const usersWithAttendance = teamUsers.map(u => {
       const record = attendances.find(a => String(a.user_id) === String(u._id));
       return {
         ...u,
         today_attendance: record ? {
           check_in: record.check_in,
           check_out: record.check_out,
-          status: record.status
+          status: record.status,
+          work_mode: record.work_mode ?? "OFFICE",
+          check_in_location: (record as any).check_in_location ?? null,
         } : null
       };
     });

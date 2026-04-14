@@ -7,6 +7,8 @@ import { CompanySettings } from "@/src/lib/models/Settings";
 import { Organization } from "@/src/lib/models/Organization";
 import { Holiday } from "@/src/lib/models/Holiday";
 import { BlackPoint } from "@/src/lib/models/BlackPoint";
+import { User } from "@/src/lib/models/User";
+import { WFHRequest } from "@/src/lib/models/WFHRequest";
 import mongoose from "mongoose";
 
 // Helper to get normalized "today" date (midnight UTC)
@@ -94,6 +96,38 @@ export async function POST(request: Request) {
     const today = getTodayDate();
     const now = new Date();
 
+    // ── Normalise incoming GPS coords ────────────────────────────────────────
+    const gpsCoords: { latitude: number; longitude: number } | undefined =
+      location?.latitude != null && location?.longitude != null
+        ? { latitude: location.latitude, longitude: location.longitude }
+        : location?.lat != null && location?.lng != null
+        ? { latitude: location.lat, longitude: location.lng }
+        : undefined;
+
+    // ── Determine work_mode via User.work_model waterfall ───────────────────
+    const dbUser = await User.findById(userId).lean();
+    const userWorkModel: string = (dbUser as any)?.work_model ?? "OFFICE";
+
+    let work_mode: "OFFICE" | "WFH" = "OFFICE";
+    if (userWorkModel === "REMOTE" || userWorkModel === "HYBRID") {
+      // Fully remote / hybrid employees are always WFH
+      work_mode = "WFH";
+    } else if (userWorkModel === "OFFICE" && action === "CHECK_IN") {
+      // Office employees can go WFH only if they have an approved WFH request today
+      const todayStart = getTodayDate();
+      const todayEnd = new Date(todayStart);
+      todayEnd.setUTCHours(23, 59, 59, 999);
+      const approvedWFH = await WFHRequest.findOne({
+        user_id: new mongoose.Types.ObjectId(userId),
+        organization_id: new mongoose.Types.ObjectId(orgId),
+        status: "APPROVED",
+        date: { $gte: todayStart, $lte: todayEnd },
+      }).lean();
+      if (approvedWFH) {
+        work_mode = "WFH";
+      }
+    }
+
     // ── Load settings (scoped to org + year) ────────────────────────────────
     const settings = await CompanySettings.findOne({
       organization_id: new mongoose.Types.ObjectId(orgId),
@@ -141,6 +175,8 @@ export async function POST(request: Request) {
             check_in: now,
             status: "PRESENT",
             organization_id: orgId,
+            work_mode,
+            ...(gpsCoords ? { check_in_location: gpsCoords } : {}),
             location: location || undefined,
           });
 
@@ -166,10 +202,14 @@ export async function POST(request: Request) {
           check_in: now,
           status: "PRESENT",
           organization_id: orgId,
+          work_mode,
+          ...(gpsCoords ? { check_in_location: gpsCoords } : {}),
           location: location || undefined,
         });
       } else {
         record.check_in = now;
+        record.work_mode = work_mode;
+        if (gpsCoords) record.check_in_location = gpsCoords;
         if (location) record.location = location;
         await record.save();
       }
@@ -207,6 +247,7 @@ export async function POST(request: Request) {
       }
 
       record.check_out = now;
+      if (gpsCoords) record.check_out_location = gpsCoords;
 
       // ── 🎁 Comp Off Eligibility Check ────────────────────────────────────
       // Check if today is a weekend or public holiday

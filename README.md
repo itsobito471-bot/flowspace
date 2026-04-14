@@ -36,3 +36,5 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 for running thr seed we can use the `npx tsx scripts/seed-super_admin.ts` command
+
+

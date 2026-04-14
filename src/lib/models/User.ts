@@ -13,6 +13,7 @@ export interface IUser extends Document {
   is_active: boolean;
   organization_id?: mongoose.Types.ObjectId | null;
   user_type: "SUPER_ADMIN" | "ORG_USER";
+  work_model: "OFFICE" | "REMOTE" | "HYBRID";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +35,11 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ["SUPER_ADMIN", "ORG_USER"],
       default: "ORG_USER",
+    },
+    work_model: {
+      type: String,
+      enum: ["OFFICE", "REMOTE", "HYBRID"],
+      default: "OFFICE",
     },
   },
   { timestamps: true }

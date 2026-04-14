@@ -9,6 +9,9 @@ export interface IAttendance extends Document {
   check_in: Date | null;
   check_out: Date | null;
   status: "PRESENT" | "ABSENT" | "HALF_DAY";
+  work_mode: "OFFICE" | "WFH";
+  check_in_location?: { latitude: number; longitude: number };
+  check_out_location?: { latitude: number; longitude: number };
   added_by: mongoose.Types.ObjectId | null;
   description: string | null;
   location?: { lat: number | null; lng: number | null };
@@ -30,6 +33,19 @@ const AttendanceSchema = new Schema<IAttendance>(
       enum: ["PRESENT", "ABSENT", "HALF_DAY"],
       required: true,
       default: "PRESENT",
+    },
+    work_mode: {
+      type: String,
+      enum: ["OFFICE", "WFH"],
+      default: "OFFICE",
+    },
+    check_in_location: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+    },
+    check_out_location: {
+      latitude: { type: Number },
+      longitude: { type: Number },
     },
     added_by: { type: Schema.Types.ObjectId, ref: "User", default: null },
     description: { type: String, default: null },

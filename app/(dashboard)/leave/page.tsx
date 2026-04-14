@@ -21,7 +21,10 @@ import {
   CalendarDays,
   Coins,
   Tag,
+  Home,
+  User,
 } from "lucide-react";
+import WFHRequestModal from "@/components/WFHRequestModal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -44,6 +47,21 @@ interface LeaveRequest {
   status: "PENDING" | "APPROVED" | "REJECTED";
   is_loss_of_pay: boolean;
   is_demerit_deduction?: boolean;
+  createdAt: string;
+}
+
+interface WFHRequest {
+  _id: string;
+  user_id: {
+    _id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+    employee_id?: string;
+  };
+  date: string;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
 }
 
@@ -663,8 +681,66 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject, onViewReason }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  WFH Row Component
+// ─────────────────────────────────────────────────────────────────────────────
+function WFHRow({ request, isAdmin, onCancel }: {
+  request: WFHRequest;
+  isAdmin: boolean;
+  onCancel?: () => void;
+}) {
+  const StatusIcon = STATUS_ICON[request.status];
+  
+  return (
+    <motion.tr
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="group border-b border-muted/10 hover:bg-muted/5 transition-colors">
+      {isAdmin && (
+        <td className="px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet/40 to-pink-500/40 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+              {initials(request.user_id.name)}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground leading-none">{request.user_id.name}</p>
+              <p className="text-[11px] text-muted mt-0.5">{request.user_id.employee_id || request.user_id.email}</p>
+            </div>
+          </div>
+        </td>
+      )}
+      <td className="px-5 py-4">
+        <div className="flex items-center gap-1.5 text-sm text-foreground">
+          <CalendarDays size={13} className="text-muted shrink-0" />
+          <span>{fmt(request.date)}</span>
+        </div>
+      </td>
+      <td className="px-5 py-4">
+        <p className="text-sm text-foreground/80 leading-relaxed">
+          {request.reason}
+        </p>
+      </td>
+      <td className="px-5 py-4">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${STATUS_STYLES[request.status]}`}>
+          <StatusIcon size={11} />
+          {request.status}
+        </span>
+      </td>
+      {!isAdmin && request.status === "PENDING" && (
+        <td className="px-5 py-4">
+          <button 
+            onClick={onCancel}
+            className="text-[11px] font-bold text-red-400 hover:text-red-500 transition-colors uppercase tracking-wider">
+            Cancel
+          </button>
+        </td>
+      )}
+    </motion.tr>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Main Page
 // ─────────────────────────────────────────────────────────────────────────────
+type MainTab = "leave" | "wfh";
 type AdminTab = "pending" | "all";
 
 function LeavePageInner() {
@@ -674,11 +750,15 @@ function LeavePageInner() {
 
   const isAdmin = (session?.user as any)?.role?.level === "ADMIN";
 
+  const [mainTab, setMainTab] = useState<MainTab>(
+    (searchParams.get("type") as MainTab) ?? "leave"
+  );
   const [adminTab, setAdminTab] = useState<AdminTab>(
     (searchParams.get("tab") as AdminTab) ?? "pending"
   );
 
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [wfhRequests, setWfhRequests] = useState<WFHRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -686,11 +766,11 @@ function LeavePageInner() {
   const LIMIT = 15;
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [wfhModalOpen, setWfhModalOpen] = useState(false);
   const [actionLeave, setActionLeave] = useState<LeaveRequest | null>(null);
   const [actionType, setActionType] = useState<"APPROVED" | "REJECTED" | null>(null);
   const [reasonLeave, setReasonLeave] = useState<LeaveRequest | null>(null);
 
-  // NEW: Updated to hold the array of balances
   const [myBalance, setMyBalance] = useState<UserBalanceData | null>(null);
 
   const fetchBalance = useCallback(async () => {
@@ -703,45 +783,75 @@ function LeavePageInner() {
     }
   }, []);
 
-  const fetchLeaves = useCallback(async (pg: number, tab?: AdminTab) => {
+  const fetchData = useCallback(async (pg: number, mTab: MainTab, aTab: AdminTab) => {
     setLoading(true);
     setError(null);
     try {
-      const activeTab = tab ?? adminTab;
-      const statusParam = isAdmin && activeTab === "pending" ? "&status=PENDING" : "";
-      const res = await fetch(`/api/leave?page=${pg}&limit=${LIMIT}${statusParam}`);
+      const endpoint = mTab === "leave" ? "/api/leave" : "/api/wfh-requests";
+      const statusParam = isAdmin && aTab === "pending" ? "&status=PENDING" : "";
+      
+      const res = await fetch(`${endpoint}?page=${pg}&limit=${LIMIT}${statusParam}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
-      setLeaves(json.data);
+      
+      if (mTab === "leave") {
+        setLeaves(json.data);
+      } else {
+        setWfhRequests(json.data);
+      }
       setPagination(json.pagination);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, adminTab]);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (status === "authenticated") {
-      fetchLeaves(page);
-      fetchBalance();
+      fetchData(page, mainTab, adminTab);
+      if (mainTab === "leave") fetchBalance();
     }
-  }, [status, page, fetchLeaves, fetchBalance]);
+  }, [status, page, mainTab, adminTab, fetchData, fetchBalance]);
 
   useEffect(() => {
+    const type = searchParams.get("type") as MainTab;
     const tab = searchParams.get("tab") as AdminTab;
+    if (type && type !== mainTab) {
+      setMainTab(type);
+      setPage(1);
+    }
     if (tab && tab !== adminTab) {
       setAdminTab(tab);
       setPage(1);
-      fetchLeaves(1, tab);
     }
-  }, [searchParams]);
+  }, [searchParams, mainTab, adminTab]);
 
-  function switchTab(tab: AdminTab) {
-    setAdminTab(tab);
+  function switchMainTab(t: MainTab) {
+    setMainTab(t);
     setPage(1);
-    router.push(`/leave?tab=${tab}`);
-    fetchLeaves(1, tab);
+    router.push(`/leave?type=${t}&tab=${adminTab}`);
+  }
+
+  function switchAdminTab(t: AdminTab) {
+    setAdminTab(t);
+    setPage(1);
+    router.push(`/leave?type=${mainTab}&tab=${t}`);
+  }
+
+  async function handleCancelWFH(id: string) {
+    if (!confirm("Are you sure you want to cancel this request?")) return;
+    try {
+      const res = await fetch(`/api/wfh-requests/${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        setWfhRequests(prev => prev.filter(r => r._id !== id));
+      } else {
+        alert(json.message);
+      }
+    } catch {
+      alert("Error cancelling request.");
+    }
   }
 
   function handleActioned(updated: LeaveRequest) {
@@ -783,6 +893,14 @@ function LeavePageInner() {
         onClose={() => setReasonLeave(null)}
       />
 
+      <WFHRequestModal
+        open={wfhModalOpen}
+        onClose={() => setWfhModalOpen(false)}
+        onCreated={(req) => {
+          if (mainTab === "wfh") setWfhRequests(prev => [req, ...prev]);
+        }}
+      />
+
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
         className="p-6 md:p-8 space-y-6">
 
@@ -792,29 +910,51 @@ function LeavePageInner() {
             <div className="flex items-center gap-2 mb-1">
               <Calendar size={18} className="text-cyan" />
               <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-cyan/70">
-                {isAdmin ? "Leave Management" : "Leave & Time Off"}
+                {isAdmin ? "Request Management" : "Requests & Time Off"}
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
-              {isAdmin ? "Leave Requests" : "My Leave"}
+              {mainTab === "leave" ? (isAdmin ? "Leave Applications" : "My Leave History") : (isAdmin ? "WFH Applications" : "My WFH Requests")}
             </h1>
             <p className="text-sm text-muted mt-1">
               {isAdmin
-                ? "Review and action employee leave applications."
-                : "Track and manage your time-off requests."}
+                ? `Review and action employee ${mainTab} applications.`
+                : `Track and manage your ${mainTab} requests.`}
             </p>
           </div>
           {!isAdmin && (
-            <button
-              onClick={() => setRequestModalOpen(true)}
-              className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold tracking-tight hover:scale-[1.02] active:scale-[0.98]">
-              <Plus size={15} strokeWidth={2.5} /> Request Leave
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setWfhModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-muted/5 border border-muted/10 text-foreground hover:bg-muted/10 transition-all">
+                <Home size={15} /> Request WFH
+              </button>
+              <button
+                onClick={() => setRequestModalOpen(true)}
+                className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold tracking-tight hover:scale-[1.02] active:scale-[0.98]">
+                <Plus size={15} strokeWidth={2.5} /> Request Leave
+              </button>
+            </div>
           )}
         </div>
 
+        {/* ── Main Tabs (Leave vs WFH) ── */}
+        <div className="flex items-center gap-6 border-b border-muted/10">
+          {(["leave", "wfh"] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => switchMainTab(t)}
+              className={`pb-3 text-sm font-bold transition-all relative ${mainTab === t ? "text-cyan" : "text-muted hover:text-foreground"}`}>
+              {t === "leave" ? "Leave Requests" : "WFH Requests"}
+              {mainTab === t && (
+                <motion.div layoutId="main-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* ── Employee Categorized Stats Strip (Phase 4) ── */}
-        {!isAdmin && myBalance?.balances && myBalance.balances.length > 0 && (
+        {!isAdmin && mainTab === "leave" && myBalance?.balances && myBalance.balances.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {myBalance.balances.map(b => (
               <div key={b.type} className="bg-surface border border-muted/10 rounded-2xl px-5 py-4 flex flex-col justify-between hover:border-cyan/20 transition-colors">
@@ -841,12 +981,12 @@ function LeavePageInner() {
             {(["pending", "all"] as AdminTab[]).map((tab) => (
               <button
                 key={tab}
-                onClick={() => switchTab(tab)}
+                onClick={() => switchAdminTab(tab)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 capitalize ${adminTab === tab
                     ? "bg-surface shadow-sm text-foreground"
                     : "text-muted hover:text-foreground"
                   }`}>
-                {tab === "pending" ? "Pending Requests" : "All Requests"}
+                {tab === "pending" ? "Pending Approval" : "All Applications"}
               </button>
             ))}
           </div>
@@ -858,12 +998,12 @@ function LeavePageInner() {
             <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-cyan to-violet" />
             <span className="text-sm font-semibold text-foreground">
               {isAdmin
-                ? adminTab === "pending" ? "Awaiting Approval" : "All Leave Requests"
-                : "My Leave History"}
+                ? adminTab === "pending" ? `Awaiting ${mainTab.toUpperCase()} Approval` : `All ${mainTab.toUpperCase()} Applications`
+                : `My ${mainTab.toUpperCase()} History`}
             </span>
             {pagination && (
               <span className="ml-auto text-[11px] text-muted">
-                {pagination.totalCount} request{pagination.totalCount !== 1 ? "s" : ""}
+                {pagination.totalCount} {mainTab === "leave" ? "leave" : "wfh"} request{pagination.totalCount !== 1 ? "s" : ""}
               </span>
             )}
           </div>
@@ -881,24 +1021,24 @@ function LeavePageInner() {
             </div>
           )}
 
-          {!loading && !error && leaves.length === 0 && (
+          {!loading && !error && (mainTab === "leave" ? leaves.length === 0 : wfhRequests.length === 0) && (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
-              <FileText size={32} strokeWidth={1.2} />
+              {mainTab === "leave" ? <FileText size={32} strokeWidth={1.2} /> : <Home size={32} strokeWidth={1.2} />}
               <p className="text-sm">
                 {isAdmin && adminTab === "pending"
-                  ? "No pending leave requests. All caught up! ✓"
-                  : "No leave requests yet."}
+                  ? `No pending ${mainTab} requests. All caught up! ✓`
+                  : `No ${mainTab} requests yet.`}
               </p>
               {!isAdmin && (
-                <button onClick={() => setRequestModalOpen(true)}
+                <button onClick={() => mainTab === "leave" ? setRequestModalOpen(true) : setWfhModalOpen(true)}
                   className="text-cyan text-sm font-semibold hover:underline">
-                  Request your first leave →
+                  Request your first {mainTab} →
                 </button>
               )}
             </div>
           )}
 
-          {!loading && !error && leaves.length > 0 && (
+          {!loading && !error && (mainTab === "leave" ? leaves.length > 0 : wfhRequests.length > 0) && (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -909,22 +1049,33 @@ function LeavePageInner() {
                     <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Dates</th>
                     <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Reason</th>
                     <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Status</th>
-                    {isAdmin && (
+                    {(!isAdmin || mainTab === "leave") && (
                       <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Actions</th>
                     )}
                   </tr>
                 </thead>
                 <tbody>
-                  {leaves.map((leave) => (
-                    <LeaveRow
-                      key={leave._id}
-                      leave={leave}
-                      isAdmin={isAdmin}
-                      onApprove={() => { setActionLeave(leave); setActionType("APPROVED"); }}
-                      onReject={() => { setActionLeave(leave); setActionType("REJECTED"); }}
-                      onViewReason={() => setReasonLeave(leave)}
-                    />
-                  ))}
+                  {mainTab === "leave" ? (
+                    leaves.map((leave) => (
+                      <LeaveRow
+                        key={leave._id}
+                        leave={leave}
+                        isAdmin={isAdmin}
+                        onApprove={() => { setActionLeave(leave); setActionType("APPROVED"); }}
+                        onReject={() => { setActionLeave(leave); setActionType("REJECTED"); }}
+                        onViewReason={() => setReasonLeave(leave)}
+                      />
+                    ))
+                  ) : (
+                    wfhRequests.map((req) => (
+                      <WFHRow
+                        key={req._id}
+                        request={req}
+                        isAdmin={isAdmin}
+                        onCancel={() => handleCancelWFH(req._id)}
+                      />
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

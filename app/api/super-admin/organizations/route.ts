@@ -26,21 +26,40 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Attach admin (ORG_USER with ADMIN role) count per org
     const orgIds = orgs.map((o) => o._id);
+
+    // 1. Get user counts
     const userCounts = await User.aggregate([
       { $match: { organization_id: { $in: orgIds }, user_type: "ORG_USER" } },
       { $group: { _id: "$organization_id", count: { $sum: 1 } } },
     ]);
-
     const countMap: Record<string, number> = {};
     for (const uc of userCounts) {
-      countMap[uc._id.toString()] = uc.count;
+      if (uc._id) {
+        countMap[uc._id.toString()] = uc.count;
+      }
+    }
+
+    // 2. Find the primary Admin for each organization
+    const adminRoles = await Role.find({ level: "ADMIN", organization_id: { $in: orgIds } }).lean();
+    const adminRoleIds = adminRoles.map(r => r._id);
+    const admins = await User.find(
+      { role_id: { $in: adminRoleIds }, user_type: "ORG_USER" },
+      "name email organization_id"
+    ).lean();
+
+    const adminMap: Record<string, any> = {};
+    for (const a of admins) {
+      const orgId = a?.organization_id?.toString();
+      if (orgId && !adminMap[orgId]) {
+        adminMap[orgId] = a; // Map the first admin found
+      }
     }
 
     const result = orgs.map((org) => ({
       ...org,
       user_count: countMap[(org._id as any).toString()] ?? 0,
+      admin: adminMap[(org._id as any).toString()] || null, // Inject admin data
     }));
 
     return NextResponse.json({ success: true, data: result });
@@ -114,6 +133,7 @@ export async function POST(request: Request) {
         title: "System Administrator",
         department: "Management",
         level: "ADMIN",
+        organization_id: org._id,
       });
       roleCreatedNow = true;
     }
@@ -163,35 +183,68 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { orgId, is_blackpoint_enabled, status, plan_id, name } = body;
+    const {
+      orgId, name, slug, plan_id, status, is_blackpoint_enabled,
+      admin_name, admin_email, admin_password
+    } = body;
 
-    if (!orgId) {
-      return NextResponse.json({ success: false, message: "orgId is required." }, { status: 400 });
-    }
+    if (!orgId) return NextResponse.json({ success: false, message: "orgId is required." }, { status: 400 });
 
     await dbConnect();
 
-    // Dynamically build the update object based on what was sent in the request
+    // 1. Slug uniqueness check if slug is being changed
+    if (slug) {
+      const existingOrg = await Organization.findOne({ slug, _id: { $ne: orgId } }).lean();
+      if (existingOrg) return NextResponse.json({ success: false, message: "Slug already taken by another organization" }, { status: 409 });
+    }
+
+    // 2. Update Organization
     const updateData: any = {};
-    if (typeof is_blackpoint_enabled === "boolean") updateData.is_blackpoint_enabled = is_blackpoint_enabled;
-    if (status === "ACTIVE" || status === "SUSPENDED") updateData.status = status;
-    if (plan_id !== undefined) updateData.plan_id = plan_id || null; // Allow removing plan
     if (name) updateData.name = name;
+    if (slug) updateData.slug = slug;
+    if (plan_id !== undefined) updateData.plan_id = plan_id || null;
+    if (status) updateData.status = status;
+    if (typeof is_blackpoint_enabled === "boolean") updateData.is_blackpoint_enabled = is_blackpoint_enabled;
 
-    const updated = await Organization.findByIdAndUpdate(
-      orgId,
-      { $set: updateData },
-      { new: true }
-    ).lean();
+    // If plan changed, fetch new max_users to sync
+    if (plan_id) {
+      const plan = await SubscriptionPlan.findById(plan_id).lean();
+      if (plan) updateData.max_users = plan.max_users;
+    }
 
-    if (!updated) {
-      return NextResponse.json({ success: false, message: "Organization not found." }, { status: 404 });
+    const updatedOrg = await Organization.findByIdAndUpdate(orgId, { $set: updateData }, { new: true })
+      .populate("plan_id", "name price max_users")
+      .lean();
+
+    if (!updatedOrg) return NextResponse.json({ success: false, message: "Organization not found." }, { status: 404 });
+
+    // 3. Update Admin User (if admin fields were provided)
+    let updatedAdmin = null;
+    if (admin_name || admin_email || admin_password) {
+      const adminRole = await Role.findOne({ level: "ADMIN", organization_id: orgId });
+      if (adminRole) {
+        const adminUser = await User.findOne({ organization_id: orgId, role_id: adminRole._id });
+        if (adminUser) {
+          // Check email uniqueness
+          if (admin_email && admin_email !== adminUser.email) {
+            const emailExists = await User.findOne({ email: admin_email, _id: { $ne: adminUser._id } });
+            if (emailExists) return NextResponse.json({ success: false, message: "Admin email already in use" }, { status: 409 });
+            adminUser.email = admin_email;
+          }
+          if (admin_name) adminUser.name = admin_name;
+          if (admin_password && admin_password.length >= 6) {
+            adminUser.passwordHash = await bcrypt.hash(admin_password, 12);
+          }
+          await adminUser.save();
+          updatedAdmin = { _id: adminUser._id, name: adminUser.name, email: adminUser.email };
+        }
+      }
     }
 
     return NextResponse.json({
       success: true,
       message: "Organization updated successfully.",
-      data: updated,
+      data: { ...updatedOrg, admin: updatedAdmin },
     });
   } catch (error: any) {
     console.error("PATCH /api/super-admin/organizations Error:", error);

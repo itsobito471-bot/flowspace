@@ -24,12 +24,14 @@ import {
   ChevronLeft,
   ChevronRight,
   FileSpreadsheet,
+  MapPin,
 } from "lucide-react";
 import { EditEmployeeModal, EditRoleModal, DeleteModal } from "./EditModals";
 import ExportReportModal from "@/components/ExportReportModal";
 import ErrorModal from "@/components/ErrorModal";
 import TeamStatusWidget from "@/components/TeamStatusWidget";
 import CompOffApprovals from "@/components/CompOffApprovals";
+import WFHApprovals from "@/components/WFHApprovals";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -56,6 +58,8 @@ export interface TeamMember {
     check_in: string | null;
     check_out: string | null;
     status: string;
+    work_mode?: "OFFICE" | "WFH";
+    check_in_location?: { latitude: number; longitude: number } | null;
   } | null;
 }
 
@@ -459,7 +463,25 @@ function MemberRow({ member, index, onEdit, onDelete }: { member: TeamMember; in
         )}
       </td>
       <td className="px-6 py-4">
-        <span className="text-[12px] font-medium text-foreground">{formatTime(member.today_attendance?.check_in)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-medium text-foreground">{formatTime(member.today_attendance?.check_in)}</span>
+          {member.today_attendance?.work_mode === "WFH" && member.today_attendance?.check_in_location && (
+            <a
+              href={`https://maps.google.com/?q=${member.today_attendance.check_in_location.latitude},${member.today_attendance.check_in_location.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`WFH location: ${member.today_attendance.check_in_location.latitude.toFixed(4)}, ${member.today_attendance.check_in_location.longitude.toFixed(4)}`}
+              className="text-cyan hover:text-cyan/70 transition-colors"
+            >
+              <MapPin size={13} strokeWidth={2.5} />
+            </a>
+          )}
+          {member.today_attendance?.work_mode === "WFH" && !member.today_attendance?.check_in_location && (
+            <span title="WFH (no location captured)" className="text-amber-500">
+              <MapPin size={13} strokeWidth={2.5} />
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-6 py-4">
         <span className="text-[12px] font-medium text-foreground">{formatTime(member.today_attendance?.check_out)}</span>
@@ -551,6 +573,7 @@ export default function TeamPage() {
   const [rolesTotalPages, setRolesTotalPages] = useState(1);
   const [rolesTotalCount, setRolesTotalCount] = useState(0);
 
+  const currentUserId = (session?.user as any)?.id ?? null;
   const userRole = (session?.user as any)?.role?.level ?? null;
   const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
@@ -663,8 +686,8 @@ export default function TeamPage() {
 
   return (
     <>
-      <AddEmployeeModal open={empModalOpen} onClose={() => setEmpModalOpen(false)} onCreated={m => setMembers(p => [m, ...p])} />
-      <CreateRoleModal open={roleModalOpen} onClose={() => setRoleModalOpen(false)} onCreated={r => setRoles(p => [r, ...p])} />
+      <AddEmployeeModal open={empModalOpen} onClose={() => setEmpModalOpen(false)} onCreated={m => { setMembers(p => [m, ...p]); setMembersTotalCount(c => c + 1); }} />
+      <CreateRoleModal open={roleModalOpen} onClose={() => setRoleModalOpen(false)} onCreated={r => { setRoles(p => [r, ...p]); setRolesTotalCount(c => c + 1); }} />
       <ExportReportModal open={exportModalOpen} onClose={() => setExportModalOpen(false)} />
 
       {/* Edit Modals */}
@@ -778,7 +801,9 @@ export default function TeamPage() {
                 <div className="px-6 py-4 border-b border-muted/10 flex items-center gap-2">
                   <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-cyan to-violet" />
                   <span className="text-sm font-semibold text-foreground">All Members</span>
-                  <span className="ml-auto text-[11px] text-muted">{membersTotalCount} record{membersTotalCount !== 1 ? "s" : ""}</span>
+                  <span className="ml-auto text-[11px] text-muted">
+                    {members.filter(m => m._id !== currentUserId).length} record{members.filter(m => m._id !== currentUserId).length !== 1 ? "s" : ""}
+                  </span>
                 </div>
 
                 {membersLoading && <div className="flex items-center justify-center py-20 gap-3"><Loader2 size={20} className="text-cyan animate-spin" /><span className="text-sm text-muted">Fetching roster…</span></div>}
@@ -800,7 +825,8 @@ export default function TeamPage() {
                           ))}
                         </tr>
                       </thead>
-                      <tbody>{members.map((m, i) => <MemberRow key={m._id} member={m} index={i} onEdit={() => setEditingMember(m)} onDelete={() => setMemberToDelete(m._id)} />)}</tbody>
+                      {/* Current user excluded — visible in their own Settings profile */}
+                      <tbody>{members.filter(m => m._id !== currentUserId).map((m, i) => <MemberRow key={m._id} member={m} index={i} onEdit={() => setEditingMember(m)} onDelete={() => setMemberToDelete(m._id)} />)}</tbody>
                     </table>
                   </div>
                 )}
@@ -862,8 +888,10 @@ export default function TeamPage() {
         </AnimatePresence>
 
         {/* ── Comp Off Approvals Queue (Admin Only) ── */}
-        <hr className="border-muted/10" />
         <CompOffApprovals />
+
+        <hr className="border-muted/10" />
+        <WFHApprovals />
 
       </motion.div>
     </>

@@ -35,6 +35,7 @@ export async function GET(request: Request) {
         work_end_time: "18:00",
         is_overtime_applicable: false,
         overtime_hourly_rate: 0,
+        organization_id: orgId,
       });
     }
 

@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
+// Update the Interface at the top of your file
 interface Org {
   _id: string; name: string; slug: string;
   status: "ACTIVE" | "SUSPENDED"; max_users: number; user_count: number;
   plan_id: { _id: string; name: string; price: number; max_users: number } | null;
+  admin?: { _id: string; name: string; email: string } | null; // <-- ADD THIS
   createdAt: string;
 }
 interface Plan { _id: string; name: string; price: number; max_users: number; features: string[]; }
@@ -214,17 +216,37 @@ function OnboardModal({ open, onClose, onSuccess }: {
 // ─── Edit Org Modal (TS SAFE) ─────────────────────────────────────────────────
 // Notice: We define 'org' as strictly 'Org' (not null). 
 // The parent component ensures this modal is only rendered when org is not null!
+// Replace your existing EditOrgModal with this
 function EditOrgModal({ org, onClose, onSuccess }: {
   org: Org; onClose: () => void; onSuccess: (updatedOrg: Org) => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
   const [form, setForm] = useState({
+    name: org.name,
+    slug: org.slug,
     status: org.status,
-    is_blackpoint_enabled: (org as any).is_blackpoint_enabled || false
+    plan_id: org.plan_id?._id || "",
+    is_blackpoint_enabled: (org as any).is_blackpoint_enabled || false,
+    admin_name: org.admin?.name || "",
+    admin_email: org.admin?.email || "",
+    admin_password: "" // Left blank intentionally for security
   });
 
+  // Auto-format slug
+  useEffect(() => {
+    if (form.slug) setForm(f => ({ ...f, slug: f.slug.toLowerCase().replace(/[^a-z0-9-]/g, "") }));
+  }, [form.slug]);
+
+  // Fetch plans for the dropdown
+  useEffect(() => {
+    fetch("/api/super-admin/plans").then(r => r.json()).then(j => { if (j.success) setPlans(j.data); });
+  }, []);
+
   async function handleSave() {
-    setLoading(true);
+    setLoading(true); setError(null);
     try {
       const res = await fetch("/api/super-admin/organizations", {
         method: "PATCH",
@@ -232,61 +254,97 @@ function EditOrgModal({ org, onClose, onSuccess }: {
         body: JSON.stringify({ orgId: org._id, ...form }),
       });
       const json = await res.json();
-      if (json.success) onSuccess(json.data);
+      if (json.success) {
+        // Preserve user_count since the PATCH returns the updated org without the aggregation
+        onSuccess({ ...json.data, user_count: org.user_count });
+      } else {
+        setError(json.message);
+      }
     } finally {
       setLoading(false);
-      onClose();
     }
   }
+
+  const inputCls = "w-full text-sm rounded-xl px-4 py-2.5 focus:outline-none transition-all";
+  const iStyle = { background: BG, border: `1px solid ${BORDER}`, color: "#E8E8F0" };
 
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-sm rounded-2xl p-6 relative"
-          style={{ background: SURFACE, border: `1px solid ${BORDER}` }}
+          className="w-full max-w-lg rounded-2xl flex flex-col pointer-events-auto"
+          style={{ background: SURFACE, border: `1px solid ${BORDER}`, maxHeight: "90vh" }}
         >
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold">Edit {org.name}</h2>
+          <div className="flex justify-between items-center p-6 border-b" style={{ borderColor: BORDER }}>
+            <h2 className="text-lg font-bold">Edit Organization</h2>
             <button onClick={onClose} className="text-muted hover:text-white"><X size={18} /></button>
           </div>
 
-          <div className="space-y-5">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-muted block mb-2">Account Status</label>
-              <select
-                className="w-full text-sm rounded-xl px-4 py-3 focus:outline-none"
-                style={{ background: BG, border: `1px solid ${BORDER}`, color: form.status === "ACTIVE" ? CYAN : "#f87171" }}
-                value={form.status}
-                onChange={e => setForm(f => ({ ...f, status: e.target.value as "ACTIVE" | "SUSPENDED" }))}
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="SUSPENDED">SUSPENDED</option>
-              </select>
+          <div className="p-6 overflow-y-auto space-y-6">
+            {error && <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}><AlertCircle size={14} className="shrink-0" />{error}</div>}
+
+            {/* General Details */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400">General Details</h3>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Organization Name</label>
+                <input className={inputCls} style={iStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Slug</label>
+                <input className={inputCls} style={iStyle} value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Account Status</label>
+                <select className={inputCls} style={{ ...iStyle, color: form.status === "ACTIVE" ? CYAN : "#f87171" }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as "ACTIVE" | "SUSPENDED" }))}>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="SUSPENDED">SUSPENDED</option>
+                </select>
+              </div>
             </div>
 
-            <div className="pt-4 border-t" style={{ borderColor: BORDER }}>
-              <label className="text-xs font-bold uppercase tracking-widest text-muted block mb-3">Premium Modules</label>
+            {/* Plan & Modules */}
+            <div className="space-y-4 pt-4 border-t" style={{ borderColor: BORDER }}>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-violet-400">Subscription & Modules</h3>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Assigned Package</label>
+                <select className={inputCls} style={iStyle} value={form.plan_id} onChange={e => setForm(f => ({ ...f, plan_id: e.target.value }))}>
+                  <option value="">No Plan (Free/Trial)</option>
+                  {plans.map(p => <option key={p._id} value={p._id}>{p.name} - ${p.price}/mo</option>)}
+                </select>
+              </div>
               <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all hover:bg-white/5" style={{ border: `1px solid ${BORDER}` }}>
-                <input
-                  type="checkbox"
-                  checked={form.is_blackpoint_enabled}
-                  onChange={e => setForm(f => ({ ...f, is_blackpoint_enabled: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-cyan-500"
-                />
+                <input type="checkbox" checked={form.is_blackpoint_enabled} onChange={e => setForm(f => ({ ...f, is_blackpoint_enabled: e.target.checked }))} className="w-4 h-4 rounded accent-cyan-500" />
                 <div>
                   <p className="text-sm font-bold">Black Point System</p>
                   <p className="text-[10px] text-muted">Allow this org to use automated penalties</p>
                 </div>
               </label>
             </div>
+
+            {/* Admin Details */}
+            <div className="space-y-4 pt-4 border-t" style={{ borderColor: BORDER }}>
+              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#E8E8F0" }}>Primary Admin</h3>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Admin Name</label>
+                <input className={inputCls} style={iStyle} value={form.admin_name} onChange={e => setForm(f => ({ ...f, admin_name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Admin Email</label>
+                <input type="email" className={inputCls} style={iStyle} value={form.admin_email} onChange={e => setForm(f => ({ ...f, admin_email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Reset Password <span className="normal-case font-normal">(Leave blank to keep current)</span></label>
+                <input type="password" placeholder="••••••••" className={inputCls} style={iStyle} value={form.admin_password} onChange={e => setForm(f => ({ ...f, admin_password: e.target.value }))} />
+              </div>
+            </div>
           </div>
 
-          <div className="mt-8 flex justify-end gap-3">
+          <div className="p-6 border-t flex justify-end gap-3" style={{ borderColor: BORDER }}>
             <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-muted hover:text-white">Cancel</button>
-            <button onClick={handleSave} disabled={loading} className="px-6 py-2 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90">
+            <button onClick={handleSave} disabled={loading} className="px-6 py-2 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 transition-all flex items-center justify-center min-w-[120px]">
               {loading ? <Loader2 size={16} className="animate-spin" /> : "Save Changes"}
             </button>
           </div>

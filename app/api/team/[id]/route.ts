@@ -17,7 +17,7 @@ export async function PATCH(request: Request, context: any) {
     }
 
     const body = await request.json();
-    const { name, email, role_id, is_active, employee_id, date_of_joining } = body;
+    const { name, email, role_id, is_active, employee_id, date_of_joining, work_model } = body;
 
     const updates: any = {};
     if (name) updates.name = name.trim();
@@ -26,6 +26,7 @@ export async function PATCH(request: Request, context: any) {
     if (date_of_joining !== undefined) updates.date_of_joining = date_of_joining ? new Date(date_of_joining) : null;
     if (role_id !== undefined) updates.role_id = role_id ? role_id : null;
     if (is_active !== undefined) updates.is_active = is_active;
+    if (work_model && ["OFFICE", "REMOTE", "HYBRID"].includes(work_model)) updates.work_model = work_model;
 
     const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true })
       .populate("role_id", "title department level")

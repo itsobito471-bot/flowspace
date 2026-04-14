@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, AlertCircle, X, Pencil, Trash2 } from "lucide-react";
+import { Loader2, AlertCircle, X, Pencil, Trash2, Building2, Wifi, WifiOff } from "lucide-react";
 import { Role, TeamMember } from "./page";
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
@@ -29,7 +29,7 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   
-  const [form, setForm] = useState({ name: "", email: "", role_id: "", is_active: true, employee_id: "", date_of_joining: "" });
+  const [form, setForm] = useState({ name: "", email: "", role_id: "", is_active: true, employee_id: "", date_of_joining: "", work_model: "OFFICE" as "OFFICE" | "REMOTE" | "HYBRID" });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
     fetch("/api/roles?limit=200").then(r => r.json()).then(j => j.success && setRoles(j.data)).finally(() => setRolesLoading(false));
     
     const formattedDate = member.date_of_joining ? new Date(member.date_of_joining).toISOString().split('T')[0] : "";
-    setForm({ name: member.name, email: member.email, role_id: member.role_id?._id || "", is_active: member.is_active, employee_id: member.employee_id || "", date_of_joining: formattedDate });
+    setForm({ name: member.name, email: member.email, role_id: member.role_id?._id || "", is_active: member.is_active, employee_id: member.employee_id || "", date_of_joining: formattedDate, work_model: (member as any).work_model || "OFFICE" });
     setErrors({}); setApiError(null);
   }, [open, member]);
 
@@ -56,7 +56,7 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
       const res = await fetch(`/api/team/${member!._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), role_id: form.role_id || null, is_active: form.is_active, employee_id: form.employee_id.trim(), date_of_joining: form.date_of_joining }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), role_id: form.role_id || null, is_active: form.is_active, employee_id: form.employee_id.trim(), date_of_joining: form.date_of_joining, work_model: form.work_model }),
       });
       const json = await res.json();
       if (!json.success) { setApiError(json.message ?? "Failed to update."); return; }
@@ -104,6 +104,29 @@ export function EditEmployeeModal({ member, open, onClose, onUpdated }: { member
                        <option value="true" className="bg-surface">Active</option>
                        <option value="false" className="bg-surface">Inactive</option>
                      </select>
+                  </Field>
+                  <Field label="Work Model">
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["OFFICE", "REMOTE", "HYBRID"] as const).map(model => (
+                        <button
+                          type="button"
+                          key={model}
+                          onClick={() => setForm(p => ({ ...p, work_model: model }))}
+                          className={`py-2 rounded-xl border text-[11px] font-bold uppercase tracking-wide transition-all flex flex-col items-center gap-1 ${
+                            form.work_model === model
+                              ? model === "OFFICE"
+                                ? "bg-cyan/10 border-cyan/30 text-cyan"
+                                : model === "REMOTE"
+                                ? "bg-violet/10 border-violet/30 text-violet"
+                                : "bg-amber-500/10 border-amber-500/30 text-amber-500"
+                              : "bg-surface border-muted/10 text-muted hover:border-muted/30"
+                          }`}
+                        >
+                          {model === "OFFICE" ? <Building2 size={13} /> : model === "REMOTE" ? <Wifi size={13} /> : <WifiOff size={13} />}
+                          {model}
+                        </button>
+                      ))}
+                    </div>
                   </Field>
                 </div>
                 <div className="flex gap-3 px-6 py-4 border-t border-muted/10">

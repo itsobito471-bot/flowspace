@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Clock, LogIn, LogOut, CheckCircle2, Loader2 } from "lucide-react";
+import { Clock, LogIn, LogOut, CheckCircle2, Loader2, Home } from "lucide-react";
 import ErrorModal from "@/components/ErrorModal";
+import WFHRequestModal from "@/components/WFHRequestModal";
 
 export default function AttendanceWidget() {
   const [loading, setLoading] = useState(true);
@@ -13,6 +14,7 @@ export default function AttendanceWidget() {
   const [totalPreviousSeconds, setTotalPreviousSeconds] = useState<number>(0);
   const [liveDuration, setLiveDuration] = useState<number>(0);
   const [errorInfo, setErrorInfo] = useState<{title: string; message: string} | null>(null);
+  const [wfhModalOpen, setWfhModalOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/attendance/today")
@@ -60,16 +62,16 @@ export default function AttendanceWidget() {
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const getCoordinates = (): Promise<{ lat: number; lng: number } | null> => {
+  const getCoordinates = (): Promise<{ latitude: number; longitude: number } | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
         resolve(null);
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
         () => resolve(null), // Silently catch Denied / Error
-        { timeout: 5000, enableHighAccuracy: false } // Fast 5s timeout fallback
+        { timeout: 5000, enableHighAccuracy: true }
       );
     });
   };
@@ -115,6 +117,13 @@ export default function AttendanceWidget() {
         title={errorInfo?.title || ""}
         message={errorInfo?.message || ""}
         onClose={() => setErrorInfo(null)}
+      />
+      <WFHRequestModal 
+        open={wfhModalOpen}
+        onClose={() => setWfhModalOpen(false)}
+        onCreated={() => {
+          // You could show a success toast here if you have one
+        }}
       />
       <div className="bg-surface border border-muted/10 rounded-2xl p-5 flex flex-col justify-between min-w-[280px] shadow-lg relative overflow-hidden">
         {/* Glow effect when active */}
@@ -165,13 +174,24 @@ export default function AttendanceWidget() {
 
         <div className="relative z-10 w-full space-y-2">
           {(!record?.check_in || (isCheckedOut && allowMultiCheckins)) && (
-            <button
-              onClick={() => handleAction("CHECK_IN")}
-              disabled={actionLoading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-background bg-foreground hover:bg-muted-foreground disabled:opacity-50 transition-all shadow-md"
-            >
-              {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <><LogIn size={16} /> {isCheckedOut ? "Punch In Again" : "Punch In"}</>}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleAction("CHECK_IN")}
+                disabled={actionLoading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-background bg-foreground hover:bg-muted-foreground disabled:opacity-50 transition-all shadow-md"
+              >
+                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <><LogIn size={16} /> {isCheckedOut ? "Punch In Again" : "Punch In"}</>}
+              </button>
+              
+              {!isCheckedOut && (
+                <button
+                  onClick={() => setWfhModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold tracking-tight text-muted border border-muted/10 hover:border-cyan/30 hover:text-cyan hover:bg-cyan/5 transition-all"
+                >
+                  <Home size={13} /> Apply for WFH
+                </button>
+              )}
+            </div>
           )}
 
           {isCheckedIn && (
