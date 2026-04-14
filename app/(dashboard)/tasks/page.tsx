@@ -258,7 +258,7 @@ function ListRow({
         layout
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex items-center border-b border-muted/5 hover:bg-muted/[0.035] transition-colors group cursor-pointer"
+        className="flex items-center border-b border-muted/15 hover:bg-muted/5 transition-colors group cursor-pointer"
         style={{
           paddingLeft: depth * 20 + (depth > 0 ? 8 : 0),
           borderLeft: `2.5px solid ${depth === 0 ? hex : "transparent"}`,
@@ -352,19 +352,19 @@ function ListRow({
         }
         {isExpanded && addingSubtaskFor === String(task._id) && (
           <div
-            className="flex items-center gap-2 py-2 border-b border-muted/5 bg-muted/[0.02]"
+            className="flex items-center gap-2 py-2 border-b border-muted/15 bg-muted/5"
             style={{ paddingLeft: (depth + 1) * 20 + 20 }}
           >
-            <div className="w-4 h-4 rounded-full border-2 border-muted/20 shrink-0" />
+            <div className="w-4 h-4 rounded-full border-2 border-muted/40 shrink-0" />
             <form onSubmit={e => handleCreateTask(e, task.status, String(task._id))} className="flex items-center gap-2 flex-1">
               <input
                 autoFocus
                 value={newTaskTitle}
                 onChange={e => setNewTaskTitle(e.target.value)}
                 placeholder="Subtask name…"
-                className="flex-1 text-[13px] bg-transparent text-foreground placeholder:text-muted/35 focus:outline-none font-medium"
+                className="flex-1 text-[13px] bg-transparent text-foreground placeholder:text-muted/60 focus:outline-none font-medium"
               />
-              <button type="button" onClick={() => { setAddingSubtaskFor(null); setNewTaskTitle(""); }} className="p-1 rounded hover:bg-muted/8 text-muted/40"><X size={11} /></button>
+              <button type="button" onClick={() => { setAddingSubtaskFor(null); setNewTaskTitle(""); }} className="p-1 rounded hover:bg-muted/10 text-muted/70"><X size={11} /></button>
               <button disabled={isCreating || !newTaskTitle.trim()} className="px-2.5 py-1 bg-foreground text-background text-[11px] font-bold rounded-lg hover:opacity-90 disabled:opacity-30 transition-all">Save</button>
             </form>
           </div>
@@ -406,15 +406,15 @@ function GroupedListView({
         const colTasks = rootTasks.filter(t => (t.status || "TODO") === col.name);
         const isCollapsed = collapsedGroups.has(col.name);
         return (
-          <div key={col.name} className="rounded-xl overflow-hidden border border-muted/8 bg-surface/30">
+          <div key={col.name} className="rounded-xl overflow-hidden border border-muted/15 bg-surface/50">
             {/* Group header */}
             <div
-              className="flex items-center gap-2 px-3 py-2 border-b border-muted/8 hover:bg-muted/[0.03] transition-colors"
+              className="flex items-center gap-2 px-3 py-2 border-b border-muted/15 hover:bg-muted/5 transition-colors"
               style={{ borderLeft: `3px solid ${hex}` }}
             >
               <button onClick={() => toggleGroup(col.name)} className="flex items-center gap-2 flex-1 min-w-0">
                 <motion.div animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.15 }}>
-                  <ChevronDown size={12} className="text-muted/40 shrink-0" />
+                  <ChevronDown size={12} className="text-muted/60 shrink-0" />
                 </motion.div>
                 <div
                   className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase"
@@ -423,14 +423,14 @@ function GroupedListView({
                   <Icon size={9} />
                   {col.name}
                 </div>
-                <span className="text-[10px] text-muted/40 font-semibold bg-muted/8 px-1.5 py-0.5 rounded-full">{colTasks.length}</span>
+                <span className="text-[10px] text-muted/60 font-semibold bg-muted/10 px-1.5 py-0.5 rounded-full">{colTasks.length}</span>
               </button>
             </div>
 
             {!isCollapsed && (
               <>
                 {/* Column headers */}
-                <div className="flex items-center px-3 py-1.5 border-b border-muted/5 text-[9px] font-bold uppercase tracking-widest text-muted/30">
+                <div className="flex items-center px-3 py-1.5 border-b border-muted/15 text-[9px] font-bold uppercase tracking-widest text-muted/60">
                   <div className="w-6 shrink-0" />
                   <div className="w-4 shrink-0" />
                   <div className="flex-1 pl-2">Name</div>
@@ -463,26 +463,26 @@ function GroupedListView({
                 ))}
 
                 {addingForStatus === col.name ? (
-                  <div className="flex items-center gap-2 px-8 py-2 border-t border-muted/5 bg-muted/[0.02]">
-                    <div className="w-4 h-4 rounded-full border-2 border-muted/20 shrink-0" />
+                  <div className="flex items-center gap-2 px-8 py-2 border-t border-muted/15 bg-muted/5">
+                    <div className="w-4 h-4 rounded-full border-2 border-muted/40 shrink-0" />
                     <form onSubmit={e => handleCreateTask(e, col.name)} className="flex items-center gap-2 flex-1">
                       <input
                         autoFocus
                         value={newTaskTitle}
                         onChange={e => setNewTaskTitle(e.target.value)}
                         placeholder="Task name…"
-                        className="flex-1 text-[13px] bg-transparent text-foreground placeholder:text-muted/35 focus:outline-none font-medium"
+                        className="flex-1 text-[13px] bg-transparent text-foreground placeholder:text-muted/60 focus:outline-none font-medium"
                       />
-                      <button type="button" onClick={() => { setAddingForStatus(null); setNewTaskTitle(""); }} className="p-1 rounded hover:bg-muted/8 text-muted/40"><X size={11} /></button>
+                      <button type="button" onClick={() => { setAddingForStatus(null); setNewTaskTitle(""); }} className="p-1 rounded hover:bg-muted/10 text-muted/70"><X size={11} /></button>
                       <button disabled={isCreating || !newTaskTitle.trim()} className="px-2.5 py-1 bg-foreground text-background text-[11px] font-bold rounded-lg hover:opacity-90 disabled:opacity-30 transition-all">Save</button>
                     </form>
                   </div>
                 ) : (
                   <button
                     onClick={() => setAddingForStatus(col.name)}
-                    className="flex items-center gap-2 px-8 py-2.5 text-[12px] text-muted/35 hover:text-muted/60 hover:bg-muted/[0.025] transition-colors w-full group/add border-t border-muted/5"
+                    className="flex items-center gap-2 px-8 py-2.5 text-[12px] text-muted/60 hover:text-muted/80 hover:bg-muted/5 transition-colors w-full group/add border-t border-muted/15"
                   >
-                    <Plus size={11} className="group-hover/add:text-foreground/40 transition-colors" />
+                    <Plus size={11} className="group-hover/add:text-foreground/60 transition-colors" />
                     Add task
                   </button>
                 )}
@@ -739,7 +739,7 @@ export default function TasksPage() {
   const pendingCount = pages.filter(p => p.approval_status === "PENDING").length;
 
   // ─── Sidebar content ──────────────────────────────────────────────────────────
-  const SidebarContent = () => (
+  const sidebarContent = (
     <>
       <div className="px-4 py-3 border-b border-muted/10 flex items-center justify-between">
         <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted/60">Workspaces</span>
@@ -894,7 +894,7 @@ export default function TasksPage() {
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden" />
             <motion.aside initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={spring} className="fixed top-0 left-0 bottom-0 z-50 w-56 bg-surface border-r border-muted/10 flex flex-col sm:hidden shadow-2xl">
-              <SidebarContent />
+              {sidebarContent}
             </motion.aside>
           </>
         )}
@@ -902,7 +902,7 @@ export default function TasksPage() {
 
       {/* Desktop sidebar */}
       <aside className="hidden sm:flex w-52 lg:w-60 shrink-0 flex-col border-r border-muted/10 bg-surface overflow-hidden">
-        <SidebarContent />
+        {sidebarContent}
       </aside>
 
       {/* Main */}
@@ -1117,7 +1117,7 @@ export default function TasksPage() {
                             ) : (
                               <button
                                 onClick={() => setAddingForStatus(col.name)}
-                                className="w-full flex items-center gap-1.5 px-3 py-2 text-[11px] text-muted/40 hover:text-muted hover:bg-muted/5 rounded-xl transition-colors"
+                                className="w-full flex items-center gap-1.5 px-3 py-2 text-[11px] text-muted/60 hover:text-muted/80 hover:bg-muted/10 rounded-xl transition-colors"
                               >
                                 <Plus size={11} /><span>Add task</span>
                               </button>
