@@ -22,7 +22,7 @@ interface EmployeeDetails {
   } | null;
 }
 
-function EmployeeLeavesTab({ employeeId }: { employeeId: string }) {
+function EmployeeLeavesTab({ employeeId, isAdmin }: { employeeId: string; isAdmin: boolean }) {
   const [leaves, setLeaves] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,16 +36,106 @@ function EmployeeLeavesTab({ employeeId }: { employeeId: string }) {
       .catch(() => setLoading(false));
   }, [employeeId]);
 
+  // Leave Quotas State
+  const [quotas, setQuotas] = useState<any[]>([]);
+  const [loadingQuotas, setLoadingQuotas] = useState(isAdmin);
+  const [savingQuotas, setSavingQuotas] = useState(false);
+  const [quotaMessage, setQuotaMessage] = useState("");
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetch(`/api/users/${employeeId}/leave-balances`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success) setQuotas(json.data);
+          setLoadingQuotas(false);
+        })
+        .catch(() => setLoadingQuotas(false));
+    }
+  }, [employeeId, isAdmin]);
+
+  const handleSaveQuotas = async () => {
+    setSavingQuotas(true);
+    setQuotaMessage("");
+    try {
+      const res = await fetch(`/api/users/${employeeId}/leave-balances`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(quotas.map(q => ({ leave_type_id: q.leave_type_id, total_allowance: q.total_allowance })))
+      });
+      const data = await res.json();
+      if (data.success) {
+        setQuotaMessage("Quotas saved successfully!");
+        setTimeout(() => setQuotaMessage(""), 3000);
+      } else {
+        setQuotaMessage(data.message || "Failed to save");
+      }
+    } catch (err) {
+      setQuotaMessage("Network error");
+    } finally {
+      setSavingQuotas(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-cyan" /></div>;
 
-  if (leaves.length === 0) return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
-      <FileText size={32} strokeWidth={1.2} />
-      <p className="text-sm">No leave requests found.</p>
-    </div>
-  );
-
   return (
+    <div className="flex flex-col gap-8">
+      {isAdmin && (
+        <div className="bg-surface border border-muted/10 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Leave Quotas</h3>
+              <p className="text-sm text-muted">Override total allowance for this employee.</p>
+            </div>
+            {quotaMessage && (
+              <span className="text-xs font-semibold text-emerald-400">{quotaMessage}</span>
+            )}
+          </div>
+          {loadingQuotas ? (
+            <Loader2 className="animate-spin text-cyan" />
+          ) : (
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {quotas.map((q, idx) => (
+                  <div key={q.leave_type_id} className="p-4 rounded-xl border border-muted/10 bg-background/50">
+                    <label className="text-[11px] font-semibold tracking-widest uppercase text-muted block mb-2">{q.name}</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        value={q.total_allowance ?? 0} 
+                        onChange={(e) => {
+                          const newQuotas = [...quotas];
+                          newQuotas[idx].total_allowance = Number(e.target.value);
+                          setQuotas(newQuotas);
+                        }}
+                        className="w-20 bg-surface border border-muted/20 rounded-lg px-2 py-1.5 text-sm font-bold focus:border-cyan outline-none" 
+                      />
+                      <span className="text-xs text-muted">days (used: {q.consumed})</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button 
+                onClick={handleSaveQuotas} 
+                disabled={savingQuotas}
+                className="btn-brand px-4 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2"
+              >
+                {savingQuotas ? <Loader2 size={14} className="animate-spin" /> : "Save Quotas"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div>
+        <h3 className="text-lg font-bold text-foreground mb-4">Leave History</h3>
+        {leaves.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted border border-muted/10 rounded-2xl">
+            <FileText size={32} strokeWidth={1.2} />
+            <p className="text-sm">No leave requests found.</p>
+          </div>
+        ) : (
     <div className="bg-surface border border-muted/10 rounded-2xl overflow-hidden mt-4">
       <table className="w-full text-left border-collapse">
         <tbody>
@@ -95,6 +185,9 @@ function EmployeeLeavesTab({ employeeId }: { employeeId: string }) {
           })}
         </tbody>
       </table>
+    </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -687,7 +780,7 @@ export default function EmployeeProfilePage() {
 
           {activeTab === "LEAVES" && (
             <motion.div key="leaves" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full">
-              <EmployeeLeavesTab employeeId={employee._id} />
+              <EmployeeLeavesTab employeeId={employee._id} isAdmin={isAdmin} />
             </motion.div>
           )}
 

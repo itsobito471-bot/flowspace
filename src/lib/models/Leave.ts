@@ -5,9 +5,10 @@ export interface ILeave extends Document {
   start_date: Date;
   end_date: Date;
   reason: string;
-  leave_type: string;
+  leave_type_id?: mongoose.Types.ObjectId;
   status: "PENDING" | "APPROVED" | "REJECTED";
   organization_id: mongoose.Types.ObjectId;
+  is_unpaid: boolean;
   is_loss_of_pay: boolean;
   is_demerit_deduction?: boolean;
   createdAt: Date;
@@ -20,7 +21,7 @@ const LeaveSchema = new Schema<ILeave>(
     start_date: { type: Date, required: true },
     end_date: { type: Date, required: true },
     reason: { type: String, required: true },
-    leave_type: { type: String, required: true },
+    leave_type_id: { type: Schema.Types.ObjectId, required: false },
     organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
     status: {
       type: String,
@@ -33,6 +34,7 @@ const LeaveSchema = new Schema<ILeave>(
      * employee has insufficient leave_quota remaining.
      */
     is_loss_of_pay: { type: Boolean, default: false },
+    is_unpaid: { type: Boolean, default: false },
     is_demerit_deduction: { type: Boolean, default: false },
   },
   { timestamps: true }

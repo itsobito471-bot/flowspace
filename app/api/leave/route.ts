@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       query.status = statusFilter;
     }
 
-    const [leaves, totalCount] = await Promise.all([
+    const [leaves, totalCount, settings] = await Promise.all([
       Leave.find(query)
         .populate("user_id", "name email avatar employee_id")
         .sort({ createdAt: -1 })
@@ -72,11 +72,29 @@ export async function GET(request: Request) {
         .lean()
         .exec(),
       Leave.countDocuments(query),
+      CompanySettings.findOne({ organization_id: orgId }).lean()
     ]);
+
+    const leaveTypes = settings?.leave_types || [];
+
+    const leavesWithNames = leaves.map((l: any) => {
+      let leaveName = "Unknown";
+      if (l.is_unpaid) {
+        leaveName = "Unpaid Leave";
+      } else if (l.leave_type_id) {
+        const typeMatch = leaveTypes.find((t: any) => String(t._id) === String(l.leave_type_id));
+        if (typeMatch) leaveName = typeMatch.name;
+      }
+
+      return {
+        ...l,
+        leave_type: leaveName,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data: leaves,
+      data: leavesWithNames,
       pagination: {
         page,
         limit,
@@ -113,9 +131,9 @@ export async function POST(request: Request) {
 
     const userName = session.user?.name ?? "An employee";
     const body = await request.json();
-    const { start_date, end_date, reason, leave_type } = body;
+    const { start_date, end_date, reason, leave_type_id, is_unpaid } = body;
 
-    if (!start_date || !end_date || !reason?.trim() || !leave_type?.trim()) {
+    if (!start_date || !end_date || !reason?.trim() || (!is_unpaid && !leave_type_id)) {
       return NextResponse.json(
         { success: false, message: "Start date, end date, reason, and leave type are required." },
         { status: 400 }
@@ -187,6 +205,33 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    if (!is_unpaid) {
+      const user = await User.findById(userId).lean();
+      if (!user) {
+        return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+      }
+      
+      let balance = (user as any).leave_balances?.find((b: any) => String(b.leave_type_id) === String(leave_type_id));
+
+      if (!balance) {
+        const typeMatch = settings?.leave_types?.find((t: any) => String(t._id) === String(leave_type_id));
+        if (typeMatch) {
+          balance = {
+            total_allowance: typeMatch.default_allowance || (typeMatch as any).quota || 0,
+            consumed: 0
+          };
+        }
+      }
+
+      if (!balance) {
+        return NextResponse.json({ success: false, message: "You are not eligible for this leave type." }, { status: 403 });
+      }
+      if ((balance.total_allowance - balance.consumed) < actualLeaveDays) {
+        return NextResponse.json({ success: false, message: "Insufficient leave balance." }, { status: 400 });
+      }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
 
     // Create the leave record (Notice we keep the original start and end date for the record)
@@ -196,7 +241,8 @@ export async function POST(request: Request) {
       start_date: start,
       end_date: end,
       reason: reason.trim(),
-      leave_type: leave_type.trim(),
+      leave_type_id: is_unpaid ? undefined : leave_type_id,
+      is_unpaid: !!is_unpaid,
       status: "PENDING",
     });
 

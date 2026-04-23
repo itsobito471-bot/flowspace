@@ -11,6 +11,11 @@ export interface IUser extends Document {
   earned_flex_leaves: number;
   earned_comp_offs: number;
   is_active: boolean;
+  leave_balances: {
+    leave_type_id: mongoose.Types.ObjectId;
+    total_allowance: number;
+    consumed: number;
+  }[];
   organization_id?: mongoose.Types.ObjectId | null;
   user_type: "SUPER_ADMIN" | "ORG_USER";
   work_model: "OFFICE" | "REMOTE" | "HYBRID";
@@ -30,6 +35,16 @@ const UserSchema = new Schema<IUser>(
     earned_flex_leaves: { type: Number, default: 0 },
     earned_comp_offs: { type: Number, default: 0 },
     is_active: { type: Boolean, default: true },
+    leave_balances: {
+      type: [
+        {
+          leave_type_id: { type: Schema.Types.ObjectId, required: true },
+          total_allowance: { type: Number, required: true },
+          consumed: { type: Number, default: 0 },
+        }
+      ],
+      default: []
+    },
     organization_id: { type: Schema.Types.ObjectId, ref: "Organization", default: null },
     user_type: {
       type: String,

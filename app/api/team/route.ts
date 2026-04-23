@@ -3,6 +3,7 @@ import dbConnect from "@/src/lib/mongodb";
 import { User } from "@/src/lib/models/User";
 import "@/src/lib/models/Role"; // ensure Role schema is registered for .populate()
 import { Attendance } from "@/src/lib/models/Attendance";
+import { CompanySettings } from "@/src/lib/models/Settings";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
@@ -122,6 +123,16 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(password.trim(), 12);
 
+    const settings = await CompanySettings.findOne({ organization_id: myOrgId }).lean();
+    let leave_balances: any[] = [];
+    if (settings && settings.leave_types) {
+      leave_balances = settings.leave_types.map((type: any) => ({
+        leave_type_id: type._id,
+        total_allowance: type.default_allowance || 0,
+        consumed: 0,
+      }));
+    }
+
     const newUser = await User.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -132,6 +143,7 @@ export async function POST(request: Request) {
       earned_flex_leaves: 0,
       is_active: true,
       organization_id: myOrgId,
+      leave_balances,
     });
 
     // Re-fetch with populated role so the UI can add the row immediately

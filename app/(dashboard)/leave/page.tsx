@@ -196,7 +196,13 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
       const res = await fetch("/api/leave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          start_date: form.start_date,
+          end_date: form.end_date,
+          reason: form.reason,
+          leave_type_id: form.leave_type === "UNPAID" ? undefined : form.leave_type,
+          is_unpaid: form.leave_type === "UNPAID",
+        }),
       });
       const json = await res.json();
       if (!json.success) { setApiError(json.message); return; }
@@ -216,8 +222,8 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
     : null;
 
   // Find the currently selected balance category to show the specific progress bar
-  const selectedBal = form.leave_type && balanceData?.balances
-    ? balanceData.balances.find(b => b.type === form.leave_type)
+  const selectedBal = form.leave_type && form.leave_type !== "UNPAID" && balanceData?.balances
+    ? balanceData.balances.find((b: any) => b.id === form.leave_type)
     : null;
 
   return (
@@ -282,11 +288,12 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
                       className={inputCls + " appearance-none cursor-pointer"}
                     >
                       <option value="" disabled>Select Leave Type</option>
-                      {balanceData?.balances.map(b => (
-                        <option key={b.type} value={b.type} disabled={b.remaining <= 0}>
+                      {balanceData?.balances.map((b: any) => (
+                        <option key={b.id} value={b.id} disabled={b.remaining <= 0}>
                           {b.type} ({b.remaining} days remaining)
                         </option>
                       ))}
+                      <option value="UNPAID">Unpaid Leave (Loss of Pay)</option>
                     </select>
                     {errors.leave_type && <p className="text-[11px] text-red-400">{errors.leave_type}</p>}
                   </div>

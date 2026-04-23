@@ -5,7 +5,7 @@ export interface ICompanySettings extends Document {
   // annual_leave_quota: number;
   leave_types: {
     name: string;
-    quota: number;
+    default_allowance: number;
   }[];
   weekend_policy: number[]; // e.g. [0, 6] for Sunday, Saturday
   specific_weekend_rules: {
@@ -43,12 +43,12 @@ const CompanySettingsSchema = new Schema<ICompanySettings>(
       type: [
         {
           name: { type: String, required: true }, // e.g., "Sick Leave"
-          quota: { type: Number, required: true }, // e.g., 10
+          default_allowance: { type: Number, required: true }, // e.g., 10
         }
       ],
       default: [
-        { name: "Casual Leave", quota: 10 },
-        { name: "Sick Leave", quota: 5 }
+        { name: "Casual Leave", default_allowance: 10 },
+        { name: "Sick Leave", default_allowance: 5 }
       ]
     },
     // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
