@@ -384,7 +384,7 @@ function EnquiryForm({ light }: { light: boolean }) {
 // ─── PAGE ROOT ────────────────────────────────────────────────────────────────
 export default function FlowSpaceLanding() {
   const router = useRouter();
-  const [light, setLight] = useState(false);
+  const [light, setLight] = useState(true);
   const [wordIndex, setWordIndex] = useState(0);
   const [hoveredTestimonialIdx, setHoveredTestimonialIdx] = useState<number | null>(null);
   const [showTestimonialModal, setShowTestimonialModal] = useState(false);
