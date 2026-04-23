@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Clock, LogIn, LogOut, CheckCircle2, Loader2, Home } from "lucide-react";
+import { useSession } from "next-auth/react";
 import ErrorModal from "@/components/ErrorModal";
 import WFHRequestModal from "@/components/WFHRequestModal";
 
@@ -15,6 +16,8 @@ export default function AttendanceWidget() {
   const [liveDuration, setLiveDuration] = useState<number>(0);
   const [errorInfo, setErrorInfo] = useState<{title: string; message: string} | null>(null);
   const [wfhModalOpen, setWfhModalOpen] = useState(false);
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role?.level === "ADMIN" || (session?.user as any)?.userType === "SUPER_ADMIN";
 
   useEffect(() => {
     fetch("/api/attendance/today")
@@ -183,7 +186,7 @@ export default function AttendanceWidget() {
                 {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <><LogIn size={16} /> {isCheckedOut ? "Punch In Again" : "Punch In"}</>}
               </button>
               
-              {!isCheckedOut && (
+              {!isCheckedOut && !isAdmin && (
                 <button
                   onClick={() => setWfhModalOpen(true)}
                   className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold tracking-tight text-muted border border-muted/10 hover:border-cyan/30 hover:text-cyan hover:bg-cyan/5 transition-all"

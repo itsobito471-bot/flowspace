@@ -68,10 +68,10 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen w-full flex bg-background text-foreground font-sans overflow-hidden">
             {/* Left Column: Branding / Marketing Images */}
-            <div className="hidden lg:flex w-[55%] flex-col justify-between p-12 relative overflow-hidden bg-black">
+            <div className="hidden lg:flex w-[55%] flex-col justify-between p-12 relative overflow-hidden bg-obsidian">
                 {/* Abstract wavy background image placeholder */}
                 <div
-                    className="absolute inset-0 z-0 opacity-80 mix-blend-screen"
+                    className="absolute inset-0 z-0 opacity-40 dark:opacity-80 mix-blend-multiply dark:mix-blend-screen"
                     style={{
                         backgroundImage: 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
                         backgroundSize: 'cover',
@@ -80,7 +80,7 @@ export default function LoginPage() {
                     }}
                 />
                 {/* Gradient overlay to smoothly blend edges if needed */}
-                <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/80 via-transparent to-background" />
+                <div className="absolute inset-0 z-0 bg-gradient-to-r from-obsidian/80 via-transparent to-background" />
 
                 <div className="relative z-10">
                     <motion.div
@@ -91,9 +91,9 @@ export default function LoginPage() {
                     >
                         {/* Logo Icon */}
                         <div className="w-8 h-8 bg-cyan relative rotate-45 flex flex-shrink-0 items-center justify-center">
-                            <div className="w-3 h-3 bg-black absolute -left-1 -bottom-1 rotate-45" />
+                            <div className="w-3 h-3 bg-obsidian absolute -left-1 -bottom-1 rotate-45" />
                         </div>
-                        <span className="text-xl font-bold tracking-wide text-white">FlowSpace</span>
+                        <span className="text-xl font-bold tracking-wide text-foreground">FlowSpace</span>
                     </motion.div>
                 </div>
 
@@ -103,17 +103,17 @@ export default function LoginPage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
                     >
-                        <h1 className="text-8xl font-black tracking-tighter leading-[0.85] text-white">
+                        <h1 className="text-8xl font-black tracking-tighter leading-[0.85] text-foreground">
                             FLOW<br />
                             SPACE.
                         </h1>
-                        <p className="mt-8 text-2xl text-white/70 font-light tracking-wide">
+                        <p className="mt-8 text-2xl text-foreground/70 font-light tracking-wide">
                             Your work, <span className="text-cyan font-normal">synchronized</span>.
                         </p>
                     </motion.div>
                 </div>
 
-                <div className="relative z-10 flex items-center gap-8 text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">
+                <div className="relative z-10 flex items-center gap-8 text-[10px] font-bold tracking-[0.2em] uppercase text-muted/80">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -134,14 +134,14 @@ export default function LoginPage() {
             </div>
 
             {/* Right Column: Login Form */}
-            <div className="w-full lg:w-[45%] flex items-center justify-center p-8 bg-background">
+            <div className="w-full lg:w-[45%] flex items-center justify-center p-4 sm:p-8 bg-background">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full max-w-[420px]"
                 >
-                    <div className="bg-surface border border-muted/10 px-10 py-12 rounded-[40px] shadow-2xl relative">
+                    <div className="bg-surface border border-muted/10 px-6 sm:px-10 py-8 sm:py-12 rounded-[30px] sm:rounded-[40px] shadow-2xl relative mx-auto w-[92%] sm:w-full">
                         <h2 className="text-3xl font-bold mb-2 tracking-tight text-foreground">The Gateway</h2>
                         <p className="text-muted mb-10 text-sm font-light">Enter your credentials to access your workspace</p>
 

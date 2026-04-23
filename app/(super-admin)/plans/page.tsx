@@ -6,10 +6,11 @@ import { Plus, X, Loader2, AlertCircle, CreditCard, Check, Trash2, Zap, Users, C
 
 interface Plan { _id: string; name: string; price: number; max_users: number; features: string[]; createdAt: string; }
 
-const BG = "#0A0A0B", SURFACE = "#161618", SURFACE2 = "#1C1C1F";
-const BORDER = "rgba(255,255,255,0.07)", CYAN = "#00F2FE", VIOLET = "#892CDC", MUTED = "#666680";
+const BG = "var(--background)", SURFACE = "var(--surface)", SURFACE2 = "color-mix(in srgb, var(--background) 95%, var(--foreground))";
+const BORDER = "var(--border-subtle, color-mix(in srgb, var(--foreground) 10%, transparent))", CYAN = "#00F2FE", VIOLET = "#892CDC", MUTED = "var(--muted)";
+const FOREGROUND = "var(--foreground)";
 const inputCls = "w-full text-sm rounded-xl px-4 py-2.5 focus:outline-none transition-all";
-const iStyle = { background: BG, border: `1px solid ${BORDER}`, color: "#E8E8F0" };
+const iStyle = { background: BG, border: `1px solid ${BORDER}`, color: FOREGROUND };
 
 function CreatePlanModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (p: Plan) => void; }) {
   const [form, setForm] = useState({ name: "", price: "", max_users: "", features: "" });
@@ -113,7 +114,7 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="min-h-full" style={{ background: BG, color: "#E8E8F0" }}>
+    <div className="min-h-full" style={{ background: BG, color: FOREGROUND }}>
       <AnimatePresence>{modalOpen && <CreatePlanModal open={modalOpen} onClose={() => setModalOpen(false)} onCreated={plan => { setPlans(prev => [plan, ...prev]); setModalOpen(false); }} />}</AnimatePresence>
 
       {/* Top bar */}

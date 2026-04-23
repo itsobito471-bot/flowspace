@@ -18,8 +18,9 @@ interface Enquiry {
   createdAt: string;
 }
 
-const BG = "#0A0A0B", SURFACE = "#161618", SURFACE2 = "#1C1C1F";
-const BORDER = "rgba(255,255,255,0.07)", CYAN = "#00F2FE", BLUE = "#3B82F6", GREEN = "#10B981", MUTED = "#666680", RED = "#EF4444";
+const BG = "var(--background)", SURFACE = "var(--surface)", SURFACE2 = "color-mix(in srgb, var(--background) 95%, var(--foreground))";
+const BORDER = "var(--border-subtle, color-mix(in srgb, var(--foreground) 10%, transparent))", CYAN = "#00F2FE", BLUE = "#3B82F6", GREEN = "#10B981", MUTED = "var(--muted)", RED = "#EF4444";
+const FOREGROUND = "var(--foreground)";
 
 function StatusBadge({ status }: { status: "NEW" | "CONTACTED" | "RESOLVED" }) {
   let bg, color, border;
@@ -99,7 +100,7 @@ export default function EnquiriesPage() {
   const totalContacted = enquiries.filter(e => e.status === "CONTACTED").length;
 
   return (
-    <div className="min-h-full" style={{ background: BG, color: "#E8E8F0" }}>
+    <div className="min-h-full" style={{ background: BG, color: FOREGROUND }}>
       <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-5 border-b flex items-center justify-between gap-3" style={{ background: BG, borderColor: BORDER }}>
         <div>
           <h1 className="text-lg sm:text-xl font-black tracking-tight">Enquiries</h1>
@@ -130,7 +131,7 @@ export default function EnquiriesPage() {
 
         <div className="relative">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
-          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "#E8E8F0" }} placeholder="Search companies, names, emails..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: FOREGROUND }} placeholder="Search companies, names, emails..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
         {/* Desktop: table layout, Mobile: Card Layout */}
@@ -181,7 +182,7 @@ export default function EnquiriesPage() {
                   <td className="px-6 py-4 text-sm font-mono">{enq.team_size}</td>
                   <td className="px-6 py-4">
                     {enq.message ? (
-                      <p className="text-xs text-white/70 max-w-[250px] truncate" title={enq.message}>{enq.message}</p>
+                      <p className="text-xs text-foreground/70 max-w-[250px] truncate" title={enq.message}>{enq.message}</p>
                     ) : (
                       <span className="text-xs text-muted italic">—</span>
                     )}
@@ -190,16 +191,16 @@ export default function EnquiriesPage() {
                   <td className="px-6 py-4">
                      <div className="flex items-center justify-end gap-2">
                        {enq.status === 'NEW' && (
-                         <button onClick={() => updateStatus(enq._id, "CONTACTED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 hover:bg-blue-500/20 hover:text-blue-400 text-white/50" title="Mark as Contacted">
+                         <button onClick={() => updateStatus(enq._id, "CONTACTED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 hover:bg-blue-500/20 hover:text-blue-400 text-muted/80" title="Mark as Contacted">
                            {actionLoading === enq._id ? <Loader2 size={14} className="animate-spin" /> : <Reply size={14} />}
                          </button>
                        )}
                        {enq.status !== 'RESOLVED' && (
-                         <button onClick={() => updateStatus(enq._id, "RESOLVED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-400 text-white/50" title="Mark as Resolved">
+                         <button onClick={() => updateStatus(enq._id, "RESOLVED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-400 text-muted/80" title="Mark as Resolved">
                            {actionLoading === enq._id && enq.status !== 'NEW' ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
                          </button>
                        )}
-                       <button onClick={() => deleteEnquiry(enq._id)} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-white/50" title="Delete">
+                       <button onClick={() => deleteEnquiry(enq._id)} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-muted/80" title="Delete">
                           <Trash2 size={14} />
                        </button>
                      </div>
@@ -224,22 +225,22 @@ export default function EnquiriesPage() {
                    </div>
                    <StatusBadge status={enq.status} />
                 </div>
-                {enq.message && <p className="text-sm text-white/80 p-3 rounded-xl bg-white/5 italic">&quot;{enq.message}&quot;</p>}
+                {enq.message && <p className="text-sm text-foreground/80 p-3 rounded-xl bg-black/5 dark:bg-white/5 italic">&quot;{enq.message}&quot;</p>}
                 
                 <div className="pt-2 flex items-center justify-between border-t" style={{ borderColor: BORDER }}>
                    <p className="text-xs" style={{ color: MUTED }}>{format(new Date(enq.createdAt), "MMM d, yyyy")}</p>
                    <div className="flex items-center gap-2">
                        {enq.status === 'NEW' && (
-                         <button onClick={() => updateStatus(enq._id, "CONTACTED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 text-white/50" title="Mark as Contacted">
+                         <button onClick={() => updateStatus(enq._id, "CONTACTED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 text-muted/80" title="Mark as Contacted">
                            <Reply size={14} />
                          </button>
                        )}
                        {enq.status !== 'RESOLVED' && (
-                         <button onClick={() => updateStatus(enq._id, "RESOLVED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 text-white/50" title="Mark as Resolved">
+                         <button onClick={() => updateStatus(enq._id, "RESOLVED")} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 text-muted/80" title="Mark as Resolved">
                            <CheckCircle size={14} />
                          </button>
                        )}
-                       <button onClick={() => deleteEnquiry(enq._id)} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 text-red-400/50" title="Delete">
+                       <button onClick={() => deleteEnquiry(enq._id)} disabled={actionLoading === enq._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 text-red-400/50" title="Delete">
                           <Trash2 size={14} />
                        </button>
                      </div>

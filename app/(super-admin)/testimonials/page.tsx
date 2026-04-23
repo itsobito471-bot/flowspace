@@ -18,8 +18,9 @@ interface Testimonial {
   createdAt: string;
 }
 
-const BG = "#0A0A0B", SURFACE = "#161618", SURFACE2 = "#1C1C1F";
-const BORDER = "rgba(255,255,255,0.07)", CYAN = "#00F2FE", ORANGE = "#F5A623", RED = "#ef4444", MUTED = "#666680", GREEN = "#10B981";
+const BG = "var(--background)", SURFACE = "var(--surface)", SURFACE2 = "color-mix(in srgb, var(--background) 95%, var(--foreground))";
+const BORDER = "var(--border-subtle, color-mix(in srgb, var(--foreground) 10%, transparent))", CYAN = "#00F2FE", ORANGE = "#F5A623", RED = "#ef4444", MUTED = "var(--muted)", GREEN = "#10B981";
+const FOREGROUND = "var(--foreground)";
 
 function StatusBadge({ status }: { status: "PENDING" | "APPROVED" | "REJECTED" }) {
   let bg, color, border;
@@ -98,7 +99,7 @@ export default function TestimonialsPage() {
   const totalPending = testimonials.filter(t => t.status === "PENDING").length;
 
   return (
-    <div className="min-h-full" style={{ background: BG, color: "#E8E8F0" }}>
+    <div className="min-h-full" style={{ background: BG, color: FOREGROUND }}>
       <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-5 border-b flex items-center justify-between gap-3" style={{ background: BG, borderColor: BORDER }}>
         <div>
           <h1 className="text-lg sm:text-xl font-black tracking-tight">Testimonials</h1>
@@ -129,7 +130,7 @@ export default function TestimonialsPage() {
 
         <div className="relative">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
-          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "#E8E8F0" }} placeholder="Search quotes, names..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: FOREGROUND }} placeholder="Search quotes, names..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
         {/* Desktop & Mobile Combined Card Layout since testimonials have long quotes */}
@@ -148,9 +149,9 @@ export default function TestimonialsPage() {
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   {test.avatar ? (
-                    <img src={test.avatar} alt={test.name} className="w-10 h-10 rounded-full object-cover border border-white/10" />
+                    <img src={test.avatar} alt={test.name} className="w-10 h-10 rounded-full object-cover border border-muted/20" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/50">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/5 border border-muted/20 text-muted/80">
                       <User size={16} />
                     </div>
                   )}
@@ -163,23 +164,23 @@ export default function TestimonialsPage() {
               </div>
               
               <div className="flex-1 mb-6">
-                <p className="text-sm italic text-white/80 leading-relaxed">&quot;{test.quote}&quot;</p>
+                <p className="text-sm italic text-foreground/80 leading-relaxed">&quot;{test.quote}&quot;</p>
               </div>
 
               <div className="pt-4 border-t flex items-center justify-between" style={{ borderColor: BORDER }}>
                 <p className="text-[10px]" style={{ color: MUTED }}>{format(new Date(test.createdAt), "MMM d, yyyy")}</p>
                 <div className="flex items-center gap-2">
                   {test.status !== "APPROVED" && (
-                    <button onClick={() => updateStatus(test._id, "APPROVED")} disabled={actionLoading === test._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-400 text-white/50 disabled:opacity-50">
+                    <button onClick={() => updateStatus(test._id, "APPROVED")} disabled={actionLoading === test._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-400 text-muted/80 disabled:opacity-50">
                       {actionLoading === test._id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                     </button>
                   )}
                   {test.status !== "REJECTED" && (
-                    <button onClick={() => updateStatus(test._id, "REJECTED")} disabled={actionLoading === test._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-white/50 disabled:opacity-50">
+                    <button onClick={() => updateStatus(test._id, "REJECTED")} disabled={actionLoading === test._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-muted/80 disabled:opacity-50">
                       {actionLoading === test._id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
                     </button>
                   )}
-                  <button onClick={() => deleteTestimonial(test._id)} disabled={actionLoading === test._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-white/50 disabled:opacity-50">
+                  <button onClick={() => deleteTestimonial(test._id)} disabled={actionLoading === test._id} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-black/5 dark:bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-muted/80 disabled:opacity-50">
                     <Trash2 size={14} />
                   </button>
                 </div>

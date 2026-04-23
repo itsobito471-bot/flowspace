@@ -19,8 +19,9 @@ interface Org {
 }
 interface Plan { _id: string; name: string; price: number; max_users: number; features: string[]; }
 
-const BG = "#0A0A0B", SURFACE = "#161618", SURFACE2 = "#1C1C1F";
-const BORDER = "rgba(255,255,255,0.07)", CYAN = "#00F2FE", VIOLET = "#892CDC", MUTED = "#666680";
+const BG = "var(--background)", SURFACE = "var(--surface)", SURFACE2 = "color-mix(in srgb, var(--background) 95%, var(--foreground))";
+const BORDER = "var(--border-subtle, color-mix(in srgb, var(--foreground) 10%, transparent))", CYAN = "#00F2FE", VIOLET = "#892CDC", MUTED = "var(--muted)";
+const FOREGROUND = "var(--foreground)";
 
 function StatusBadge({ status }: { status: "ACTIVE" | "SUSPENDED" }) {
   return (
@@ -75,7 +76,7 @@ function OnboardModal({ open, onClose, onSuccess }: {
   const steps = ["Organization", "Plan", "Admin"];
   const canNext = [form.org_name.trim() && form.slug.trim(), true, form.admin_name.trim() && form.admin_email.trim() && form.admin_password.length >= 6];
   const inputCls = "w-full text-sm rounded-xl px-4 py-2.5 focus:outline-none transition-all";
-  const iStyle = { background: BG, border: `1px solid ${BORDER}`, color: "#E8E8F0" };
+  const iStyle = { background: BG, border: `1px solid ${BORDER}`, color: FOREGROUND };
 
   if (!open) return null;
 
@@ -136,7 +137,7 @@ function OnboardModal({ open, onClose, onSuccess }: {
                       <label className="text-[11px] font-bold uppercase tracking-widest block mb-1.5" style={{ color: MUTED }}>Slug</label>
                       <div className="flex items-center rounded-xl overflow-hidden" style={{ background: BG, border: `1px solid ${BORDER}` }}>
                         <span className="px-3 py-2.5 text-xs font-mono shrink-0 border-r select-none" style={{ color: MUTED, borderColor: BORDER }}>flowspace.io/</span>
-                        <input className="flex-1 bg-transparent text-sm px-3 py-2.5 focus:outline-none font-mono" style={{ color: "#E8E8F0" }} placeholder="acme-corp"
+                        <input className="flex-1 bg-transparent text-sm px-3 py-2.5 focus:outline-none font-mono" style={{ color: FOREGROUND }} placeholder="acme-corp"
                           value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))} />
                       </div>
                     </div>
@@ -266,7 +267,7 @@ function EditOrgModal({ org, onClose, onSuccess }: {
   }
 
   const inputCls = "w-full text-sm rounded-xl px-4 py-2.5 focus:outline-none transition-all";
-  const iStyle = { background: BG, border: `1px solid ${BORDER}`, color: "#E8E8F0" };
+  const iStyle = { background: BG, border: `1px solid ${BORDER}`, color: FOREGROUND };
 
   return (
     <>
@@ -326,7 +327,7 @@ function EditOrgModal({ org, onClose, onSuccess }: {
 
             {/* Admin Details */}
             <div className="space-y-4 pt-4 border-t" style={{ borderColor: BORDER }}>
-              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#E8E8F0" }}>Primary Admin</h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: FOREGROUND }}>Primary Admin</h3>
               <div>
                 <label className="text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">Admin Name</label>
                 <input className={inputCls} style={iStyle} value={form.admin_name} onChange={e => setForm(f => ({ ...f, admin_name: e.target.value }))} />
@@ -344,7 +345,7 @@ function EditOrgModal({ org, onClose, onSuccess }: {
 
           <div className="p-6 border-t flex justify-end gap-3" style={{ borderColor: BORDER }}>
             <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-muted hover:text-white">Cancel</button>
-            <button onClick={handleSave} disabled={loading} className="px-6 py-2 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 transition-all flex items-center justify-center min-w-[120px]">
+            <button onClick={handleSave} disabled={loading} className="px-6 py-2 rounded-xl text-sm font-bold bg-foreground text-background hover:opacity-90 transition-all flex items-center justify-center min-w-[120px]">
               {loading ? <Loader2 size={16} className="animate-spin" /> : "Save Changes"}
             </button>
           </div>
@@ -405,7 +406,7 @@ export default function OrganizationsPage() {
   const totalUsers = orgs.reduce((s, o) => s + o.user_count, 0);
 
   return (
-    <div className="min-h-full" style={{ background: BG, color: "#E8E8F0" }}>
+    <div className="min-h-full" style={{ background: BG, color: FOREGROUND }}>
       <AnimatePresence>
         {modalOpen && <OnboardModal open={modalOpen} onClose={() => setModalOpen(false)} onSuccess={org => { setOrgs(prev => [{ ...org, user_count: 0 } as Org, ...prev]); setModalOpen(false); }} />}
 
@@ -457,7 +458,7 @@ export default function OrganizationsPage() {
 
         <div className="relative">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
-          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "#E8E8F0" }} placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full sm:max-w-sm text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: FOREGROUND }} placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
         {/* Mobile: card list */}
