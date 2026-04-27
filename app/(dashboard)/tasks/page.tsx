@@ -542,6 +542,8 @@ export default function TasksPage() {
   const [editBoardName, setEditBoardName] = useState("");
   const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
   const [manageMembersBoardId, setManageMembersBoardId] = useState<string | null>(null);
+  const [deleteBoardTarget, setDeleteBoardTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingBoard, setIsDeletingBoard] = useState(false);
 
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editPageName, setEditPageName] = useState("");
@@ -670,6 +672,19 @@ export default function TasksPage() {
     const remaining = boards.filter(b => b._id !== selectedBoardId);
     setBoards(remaining);
     setSelectedBoardId(remaining.length > 0 ? remaining[0]._id : null);
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!deleteBoardTarget) return;
+    setIsDeletingBoard(true);
+    await fetch(`/api/boards/${deleteBoardTarget.id}`, { method: "DELETE" });
+    const remaining = boards.filter(b => b._id !== deleteBoardTarget.id);
+    setBoards(remaining);
+    if (selectedBoardId === deleteBoardTarget.id) {
+      setSelectedBoardId(remaining.length > 0 ? remaining[0]._id : null);
+    }
+    setDeleteBoardTarget(null);
+    setIsDeletingBoard(false);
   };
 
   const handleCreateTask = async (e: React.FormEvent, statusOverride?: string, parentId?: string) => {
@@ -832,6 +847,7 @@ export default function TasksPage() {
                     <button onClick={e => { e.stopPropagation(); editingBoardRef.current = { id: board._id, name: board.name }; setEditingBoardId(board._id); setEditBoardName(board.name); }} className="p-1 rounded-md text-muted hover:text-foreground transition-colors" title="Rename"><Pencil size={10} /></button>
                     <button onClick={e => { e.stopPropagation(); setIsManageMembersOpen(true); setManageMembersBoardId(board._id); setNewBoardMembers(board.members?.map((m: any) => typeof m === "string" ? m : m._id) || []); }} className="p-1 rounded-md text-muted hover:text-cyan transition-colors" title="Members"><UserPlus size={10} /></button>
                     <button onClick={e => { e.stopPropagation(); setIsManageStatusesOpen(true); setManageStatusesBoardId(board._id); setEditingStatuses(board.statuses ? [...board.statuses].sort((a: any, b: any) => a.order - b.order) : []); setNewStatusName(""); setNewStatusColor("#6b7280"); }} className="p-1 rounded-md text-muted hover:text-violet transition-colors" title="Statuses"><Settings2 size={10} /></button>
+                    <button onClick={e => { e.stopPropagation(); setDeleteBoardTarget({ id: board._id, name: board.name }); }} className="p-1 rounded-md text-muted hover:text-red-500 transition-colors" title="Delete Workspace"><Trash2 size={10} /></button>
                   </div>
                 )}
               </div>
@@ -1347,6 +1363,57 @@ export default function TasksPage() {
             </div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* ── Delete Board Confirmation Modal ─────────────────────────────────── */}
+      <AnimatePresence>
+        {deleteBoardTarget && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !isDeletingBoard && setDeleteBoardTarget(null)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.94, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.94, opacity: 0, y: 8 }} transition={spring} className="relative bg-surface border border-red-500/20 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+              {/* Icon */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                  <Trash2 size={18} className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Delete Workspace</h3>
+                  <p className="text-xs text-muted/70">This action cannot be undone</p>
+                </div>
+              </div>
+
+              {/* Warning body */}
+              <div className="bg-red-500/5 border border-red-500/15 rounded-xl px-4 py-3 mb-5 space-y-1">
+                <p className="text-sm text-foreground font-medium">
+                  You are about to permanently delete:
+                </p>
+                <p className="text-sm font-bold text-red-400">"{deleteBoardTarget.name}"</p>
+                <p className="text-xs text-muted/70 pt-1">
+                  All projects and tasks inside this workspace will be <span className="text-red-400 font-semibold">permanently deleted</span> and cannot be recovered.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setDeleteBoardTarget(null)}
+                  disabled={isDeletingBoard}
+                  className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteBoard}
+                  disabled={isDeletingBoard}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-all disabled:opacity-60"
+                >
+                  {isDeletingBoard ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {isDeletingBoard ? "Deleting…" : "Yes, Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
       <TaskModal
