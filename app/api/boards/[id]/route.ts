@@ -27,6 +27,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (body.name !== undefined) allowedUpdates.name = body.name;
     if (body.members !== undefined) allowedUpdates.members = body.members;
     if (body.statuses !== undefined) allowedUpdates.statuses = body.statuses;
+    if (body.approval_status !== undefined) allowedUpdates.approval_status = body.approval_status;
 
     const updated = await Board.findOneAndUpdate(
       { _id: id, organization_id: orgId },

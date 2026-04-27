@@ -195,15 +195,16 @@ function DatePicker({ value, onChange }: { value: string | null; onChange: (d: s
 }
 
 // ─── Approval Screen ──────────────────────────────────────────────────────────
-function ApprovalScreen({ page, onApprove, onReject }: { page: any; onApprove: () => void; onReject: () => void }) {
+function ApprovalScreen({ page, onApprove, onReject, apiPath }: { page: any; onApprove: () => void; onReject: () => void; apiPath?: string }) {
   const [loading, setLoading] = useState<null | "approve" | "reject">(null);
+  const resolvedPath = apiPath ?? `/api/pages/${page._id}`;
   const act = async (type: "approve" | "reject") => {
     setLoading(type);
     if (type === "approve") {
-      const r = await fetch(`/api/pages/${page._id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approval_status: "APPROVED" }) });
+      const r = await fetch(resolvedPath, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approval_status: "APPROVED" }) });
       if ((await r.json()).success) onApprove();
     } else {
-      const r = await fetch(`/api/pages/${page._id}`, { method: "DELETE" });
+      const r = await fetch(resolvedPath, { method: "DELETE" });
       if ((await r.json()).success) onReject();
     }
     setLoading(null);
@@ -213,7 +214,7 @@ function ApprovalScreen({ page, onApprove, onReject }: { page: any; onApprove: (
       <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center"><Lock size={24} className="text-amber-500" /></div>
       <div className="space-y-1.5">
         <h2 className="text-xl font-bold text-foreground">"{page.name}" is Pending</h2>
-        <p className="text-sm text-muted max-w-xs">Review and approve this project to allow the team to add tasks.</p>
+        <p className="text-sm text-muted max-w-xs">{apiPath?.includes("boards") ? "Review and approve this workspace to allow the team to create projects and tasks." : "Review and approve this project to allow the team to add tasks."}</p>
         {page.description && <p className="text-sm text-muted/70 max-w-sm bg-muted/5 border border-muted/10 rounded-xl p-4 italic mt-2">"{page.description}"</p>}
       </div>
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-xs">
@@ -546,6 +547,7 @@ export default function TasksPage() {
   const [editPageName, setEditPageName] = useState("");
   // Ref keeps the committed editing context for onBlur — avoids React state timing races
   const editingPageRef = useRef<{ id: string; name: string } | null>(null);
+  const editingBoardRef = useRef<{ id: string; name: string } | null>(null);
 
   const [isManageStatusesOpen, setIsManageStatusesOpen] = useState(false);
   const [manageStatusesBoardId, setManageStatusesBoardId] = useState<string | null>(null);
@@ -599,10 +601,12 @@ export default function TasksPage() {
   };
 
   const handleUpdateBoard = async (id: string, updates: any) => {
-    // Close rename input immediately so switching boards/renames doesn't race
+    // Close rename input immediately — same pattern as page renaming
     if (updates.name !== undefined) {
-      setEditingBoardId(prev => prev === id ? null : prev);
+      setEditingBoardId(null);
       setEditBoardName("");
+      editingBoardRef.current = null;
+      if (!updates.name.trim()) return; // Don't save empty names
     }
     const res = await fetch(`/api/boards/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
     const json = await res.json();
@@ -653,6 +657,19 @@ export default function TasksPage() {
     setPages(remaining);
     const next = remaining.find(p => p.approval_status === "APPROVED") || null;
     setSelectedPageId(next?._id || null); setSelectedPage(next);
+  };
+
+  const handleApproveBoard = () => {
+    if (!selectedBoardId) return;
+    setBoards(prev => prev.map(b => b._id === selectedBoardId ? { ...b, approval_status: "APPROVED" } : b));
+    handleUpdateBoard(selectedBoardId, { approval_status: "APPROVED" });
+  };
+  const handleRejectBoard = async () => {
+    if (!selectedBoardId) return;
+    await fetch(`/api/boards/${selectedBoardId}`, { method: "DELETE" });
+    const remaining = boards.filter(b => b._id !== selectedBoardId);
+    setBoards(remaining);
+    setSelectedBoardId(remaining.length > 0 ? remaining[0]._id : null);
   };
 
   const handleCreateTask = async (e: React.FormEvent, statusOverride?: string, parentId?: string) => {
@@ -744,11 +761,9 @@ export default function TasksPage() {
       <div className="px-4 py-3 border-b border-muted/10 flex items-center justify-between">
         <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted/60">Workspaces</span>
         <div className="flex items-center gap-1">
-          {isAdmin && (
-            <button onClick={() => setIsCreateBoardOpen(true)} className="p-1 rounded-lg hover:bg-muted/10 text-muted/50 hover:text-foreground transition-colors" title="New Board">
-              <Plus size={13} />
-            </button>
-          )}
+          <button onClick={() => setIsCreateBoardOpen(true)} className="p-1 rounded-lg hover:bg-muted/10 text-muted/50 hover:text-foreground transition-colors" title={isAdmin ? "New Workspace" : "Request Workspace"}>
+            <Plus size={13} />
+          </button>
           <button className="sm:hidden p-1 rounded-lg hover:bg-muted/10 text-muted" onClick={() => setSidebarOpen(false)}>
             <X size={14} />
           </button>
@@ -758,13 +773,15 @@ export default function TasksPage() {
         {boards.map(board => {
           const isExpanded = expandedBoards.has(board._id);
           const isActiveBrd = selectedBoardId === board._id;
+          const isPendingBoard = board.approval_status === "PENDING";
+          const canClickBoard = isAdmin || !isPendingBoard;
           return (
             <div key={board._id}>
-              <div className={`group/board flex items-center gap-0.5 rounded-xl transition-all ${isActiveBrd ? "bg-cyan/10" : "hover:bg-muted/5"}`}>
+              <div className={`group/board flex items-center gap-0.5 rounded-xl transition-all ${isActiveBrd ? "bg-cyan/10" : isPendingBoard ? "" : "hover:bg-muted/5"}`}>
                 {/* Chevron toggle */}
                 <button
-                  onClick={() => { setSelectedBoardId(board._id); setExpandedBoards(prev => { const n = new Set(prev); isExpanded ? n.delete(board._id) : n.add(board._id); return n; }); }}
-                  className={`p-2 rounded-xl shrink-0 transition-colors ${isActiveBrd ? "text-cyan" : "text-muted hover:text-foreground"}`}
+                  onClick={() => { if (canClickBoard && !isPendingBoard) { setSelectedBoardId(board._id); setExpandedBoards(prev => { const n = new Set(prev); isExpanded ? n.delete(board._id) : n.add(board._id); return n; }); } else if (isAdmin && isPendingBoard) { setSelectedBoardId(board._id); } }}
+                  className={`p-2 rounded-xl shrink-0 transition-colors ${isActiveBrd ? "text-cyan" : "text-muted hover:text-foreground"} ${isPendingBoard ? "opacity-50" : ""}`}
                 >
                   <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}><ChevronRight size={11} /></motion.div>
                 </button>
@@ -776,29 +793,43 @@ export default function TasksPage() {
                     <input
                       autoFocus
                       value={editBoardName}
-                      onChange={e => setEditBoardName(e.target.value)}
-                      onBlur={() => { if (editBoardName.trim() && editBoardName !== board.name) handleUpdateBoard(board._id, { name: editBoardName }); else setEditingBoardId(null); }}
-                      onKeyDown={e => { if (e.key === "Enter") handleUpdateBoard(board._id, { name: editBoardName }); if (e.key === "Escape") setEditingBoardId(null); }}
+                      onChange={e => { setEditBoardName(e.target.value); if (editingBoardRef.current) editingBoardRef.current.name = e.target.value; }}
+                      onBlur={() => {
+                        const ref = editingBoardRef.current;
+                        if (ref && ref.name.trim() && ref.name !== board.name) {
+                          handleUpdateBoard(ref.id, { name: ref.name.trim() });
+                        } else {
+                          setEditingBoardId(null);
+                          setEditBoardName("");
+                          editingBoardRef.current = null;
+                        }
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") { if (editingBoardRef.current) handleUpdateBoard(editingBoardRef.current.id, { name: editingBoardRef.current.name.trim() }); }
+                        if (e.key === "Escape") { setEditingBoardId(null); setEditBoardName(""); editingBoardRef.current = null; }
+                      }}
                       className="flex-1 min-w-0 bg-background border border-cyan/40 rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none"
                     />
                   </div>
                 ) : (
                   <button
-                    onClick={() => { setSelectedBoardId(board._id); setExpandedBoards(prev => { const n = new Set(prev); isExpanded ? n.delete(board._id) : n.add(board._id); return n; }); }}
-                    className={`flex-1 flex items-center gap-1.5 min-w-0 py-2 text-xs font-semibold transition-colors ${isActiveBrd ? "text-cyan" : "text-muted hover:text-foreground"}`}
+                    onClick={() => { if (canClickBoard && !isPendingBoard) { setSelectedBoardId(board._id); setExpandedBoards(prev => { const n = new Set(prev); isExpanded ? n.delete(board._id) : n.add(board._id); return n; }); } else if (isAdmin && isPendingBoard) { setSelectedBoardId(board._id); } }}
+                    className={`flex-1 flex items-center gap-1.5 min-w-0 py-2 text-xs transition-colors ${isActiveBrd ? "text-cyan font-semibold" : isPendingBoard ? "text-amber-500/70 cursor-not-allowed" : "text-muted hover:text-foreground font-semibold"} ${(!canClickBoard && !isAdmin) ? "pointer-events-none" : ""}`}
                   >
                     <Layers size={11} className="shrink-0" />
-                    <span className="truncate text-left">{board.name}</span>
-                    {isAdmin && pendingCount > 0 && isActiveBrd && (
+                    <span className="truncate text-left flex-1">{board.name}</span>
+                    {isAdmin && pendingCount > 0 && isActiveBrd && !isPendingBoard && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 font-bold animate-pulse shrink-0">{pendingCount}</span>
                     )}
+                    {isPendingBoard && isAdmin && <span className="text-[8px] px-1 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 font-bold animate-pulse shrink-0">Review</span>}
+                    {isPendingBoard && !isAdmin && <Lock size={10} className="text-amber-500/60 animate-pulse shrink-0 mr-2" />}
                   </button>
                 )}
 
                 {/* Admin action icons */}
                 {isAdmin && editingBoardId !== board._id && (
                   <div className="flex items-center gap-0.5 pr-1 opacity-0 group-hover/board:opacity-100 transition-all shrink-0">
-                    <button onClick={e => { e.stopPropagation(); setEditingBoardId(board._id); setEditBoardName(board.name); }} className="p-1 rounded-md text-muted hover:text-foreground transition-colors" title="Rename"><Pencil size={10} /></button>
+                    <button onClick={e => { e.stopPropagation(); editingBoardRef.current = { id: board._id, name: board.name }; setEditingBoardId(board._id); setEditBoardName(board.name); }} className="p-1 rounded-md text-muted hover:text-foreground transition-colors" title="Rename"><Pencil size={10} /></button>
                     <button onClick={e => { e.stopPropagation(); setIsManageMembersOpen(true); setManageMembersBoardId(board._id); setNewBoardMembers(board.members?.map((m: any) => typeof m === "string" ? m : m._id) || []); }} className="p-1 rounded-md text-muted hover:text-cyan transition-colors" title="Members"><UserPlus size={10} /></button>
                     <button onClick={e => { e.stopPropagation(); setIsManageStatusesOpen(true); setManageStatusesBoardId(board._id); setEditingStatuses(board.statuses ? [...board.statuses].sort((a: any, b: any) => a.order - b.order) : []); setNewStatusName(""); setNewStatusColor("#6b7280"); }} className="p-1 rounded-md text-muted hover:text-violet transition-colors" title="Statuses"><Settings2 size={10} /></button>
                   </div>
@@ -914,10 +945,8 @@ export default function TasksPage() {
             <h1 className="text-sm font-bold text-foreground flex items-center gap-1.5 truncate">
               {selectedPage ? (
                 <>
-                  <span className="text-muted hidden sm:inline truncate max-w-[80px]" onDoubleClick={() => { if (isAdmin && selectedBoardId) { setEditingBoardId(selectedBoardId); setEditBoardName(boards.find(b => b._id === selectedBoardId)?.name || ""); } }} title="Double click to rename">
-                    {editingBoardId === selectedBoardId ? (
-                      <input autoFocus value={editBoardName} onChange={e => setEditBoardName(e.target.value)} onBlur={() => handleUpdateBoard(selectedBoardId!, { name: editBoardName })} onKeyDown={e => { if (e.key === "Enter") handleUpdateBoard(selectedBoardId!, { name: editBoardName }); if (e.key === "Escape") setEditingBoardId(null); }} className="bg-transparent border-b border-cyan/40 text-foreground focus:outline-none w-[80px]" />
-                    ) : boards.find(b => b._id === selectedBoardId)?.name}
+                  <span className="text-muted hidden sm:inline truncate max-w-[80px]">
+                    {boards.find(b => b._id === selectedBoardId)?.name}
                   </span>
                   <ChevronRight size={11} className="text-muted/40 hidden sm:inline shrink-0" />
                   <span className="truncate max-w-[120px] sm:max-w-none" onDoubleClick={() => { if (isAdmin || !isPendingPage) { setEditingPageId(selectedPage._id); setEditPageName(selectedPage.name); } }} title="Double click to rename">
@@ -943,15 +972,23 @@ export default function TasksPage() {
         </header>
 
         <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-          {isPendingPage ? (
-            isAdmin ? <ApprovalScreen page={selectedPage} onApprove={handleApproveProject} onReject={handleRejectProject} />
+          {(() => { const selectedBoard = boards.find(b => b._id === selectedBoardId); return selectedBoard?.approval_status === "PENDING" ? (
+            isAdmin ? <ApprovalScreen page={selectedBoard} apiPath={`/api/boards/${selectedBoard._id}`} onApprove={handleApproveBoard} onReject={handleRejectBoard} />
+              : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col items-center justify-center gap-3 text-muted p-8">
+                  <Lock size={32} className="text-amber-500/40" />
+                  <p className="text-sm font-semibold text-amber-500">Workspace is awaiting admin approval.</p>
+                </motion.div>
+              )
+          ) : isPendingPage ? (
+            isAdmin ? <ApprovalScreen page={selectedPage} apiPath={`/api/pages/${selectedPage?._id}`} onApprove={handleApproveProject} onReject={handleRejectProject} />
               : (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col items-center justify-center gap-3 text-muted p-8">
                   <Lock size={32} className="text-amber-500/40" />
                   <p className="text-sm font-semibold text-amber-500">Awaiting admin approval.</p>
                 </motion.div>
               )
-          ) : (
+          ) : null; })() || (
             <>
               <div className="flex-1 overflow-auto no-scrollbar p-4 pt-2">
                 {loading ? (
@@ -1140,10 +1177,11 @@ export default function TasksPage() {
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCreateBoardOpen(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }} transition={spring} className="relative bg-surface border border-muted/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-              <div className="flex items-center gap-3 mb-5"><div className="w-8 h-8 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center"><Layers size={14} className="text-cyan" /></div><h3 className="text-base font-bold text-foreground">New Board</h3></div>
+              <div className="flex items-center gap-3 mb-5"><div className="w-8 h-8 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center"><Layers size={14} className="text-cyan" /></div><h3 className="text-base font-bold text-foreground">{isAdmin ? "New Workspace" : "Request Workspace"}</h3></div>
               <form onSubmit={handleCreateBoard} className="space-y-4">
-                <input autoFocus value={newBoardName} onChange={e => setNewBoardName(e.target.value)} placeholder="Board name…" className="w-full bg-muted/5 border border-muted/15 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40" />
+                <input autoFocus value={newBoardName} onChange={e => setNewBoardName(e.target.value)} placeholder="Workspace name…" className="w-full bg-muted/5 border border-muted/15 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40" />
                 
+                {isAdmin && (
                 <div className="space-y-1.5">
                   <span className="text-[10px] uppercase font-bold text-muted/60 tracking-wider">Members ({newBoardMembers.length})</span>
                   <div className="flex items-center gap-2 flex-wrap h-10 px-3 bg-muted/5 border border-muted/15 rounded-xl">
@@ -1151,10 +1189,15 @@ export default function TasksPage() {
                     <span className="text-[10px] text-muted line-clamp-1 flex-1">{newBoardMembers.length > 0 ? "Users selected" : "Click to select members"}</span>
                   </div>
                 </div>
+                )}
+
+                {!isAdmin && (
+                  <p className="text-xs text-muted/60 bg-amber-500/5 border border-amber-500/15 rounded-xl px-3 py-2.5">Your request will be sent to the admin for approval before you can access this workspace.</p>
+                )}
 
                 <div className="flex gap-2 justify-end pt-2">
                   <button type="button" onClick={() => setIsCreateBoardOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors">Cancel</button>
-                  <button type="submit" disabled={!newBoardName.trim()} className="btn-primary px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40">Create</button>
+                  <button type="submit" disabled={!newBoardName.trim()} className="btn-primary px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40">{isAdmin ? "Create" : "Send Request"}</button>
                 </div>
               </form>
             </motion.div>

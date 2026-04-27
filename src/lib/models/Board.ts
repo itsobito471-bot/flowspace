@@ -12,6 +12,7 @@ export interface IBoard extends Document {
   creator_id: mongoose.Types.ObjectId;
   members: mongoose.Types.ObjectId[];
   statuses: IStatus[];
+  approval_status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +29,11 @@ const BoardSchema = new Schema<IBoard>(
     organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
     creator_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     members: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    approval_status: {
+      type: String,
+      enum: ["PENDING", "APPROVED", "REJECTED"],
+      default: "APPROVED",
+    },
     statuses: {
       type: [StatusSchema],
       default: [

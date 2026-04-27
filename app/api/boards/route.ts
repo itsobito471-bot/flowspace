@@ -30,8 +30,6 @@ export async function GET(request: Request) {
 
     let boards = await Board.find(query).sort({ createdAt: 1 }).lean();
 
-
-
     return NextResponse.json({ success: true, data: boards });
   } catch (error: any) {
     console.error("GET Boards Error:", error);
@@ -48,10 +46,6 @@ export async function POST(request: Request) {
     const userType = (session.user as any)?.userType as string;
     const isAdmin = userRole === "ADMIN" || userType === "SUPER_ADMIN";
 
-    if (!isAdmin) {
-      return NextResponse.json({ success: false, message: "Only Admins can create Boards." }, { status: 403 });
-    }
-
     const orgId = session.user.orgId as string;
     const userId = (session.user as any).id as string;
     const body = await request.json();
@@ -62,7 +56,8 @@ export async function POST(request: Request) {
       ...body,
       organization_id: orgId,
       creator_id: userId,
-      members: body.members || [userId]
+      members: body.members || [userId],
+      approval_status: isAdmin ? "APPROVED" : "PENDING",
     });
 
     return NextResponse.json({ success: true, data: newBoard });
