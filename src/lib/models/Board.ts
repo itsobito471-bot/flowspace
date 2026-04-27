@@ -32,7 +32,7 @@ const BoardSchema = new Schema<IBoard>(
     approval_status: {
       type: String,
       enum: ["PENDING", "APPROVED", "REJECTED"],
-      default: "APPROVED",
+      default: "PENDING",
     },
     statuses: {
       type: [StatusSchema],

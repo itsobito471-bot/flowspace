@@ -549,6 +549,8 @@ export default function TasksPage() {
 
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editPageName, setEditPageName] = useState("");
+  const [deletePageTarget, setDeletePageTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingPage, setIsDeletingPage] = useState(false);
   // Ref keeps the committed editing context for onBlur — avoids React state timing races
   const editingPageRef = useRef<{ id: string; name: string } | null>(null);
   const editingBoardRef = useRef<{ id: string; name: string } | null>(null);
@@ -564,8 +566,10 @@ export default function TasksPage() {
     const res = await fetch("/api/boards"); const json = await res.json();
     if (json.success && json.data.length > 0) {
       setBoards(json.data);
-      setSelectedBoardId(json.data[0]._id);
-      setExpandedBoards(new Set([json.data[0]._id]));
+      // For non-admins, pick the first approved board; for admins, pick first available
+      const defaultBoard = isAdmin ? json.data[0] : (json.data.find((b: any) => b.approval_status === "APPROVED") || json.data[0]);
+      setSelectedBoardId(defaultBoard._id);
+      setExpandedBoards(new Set([defaultBoard._id]));
     }
   }, []);
   const fetchUsers = useCallback(async () => {
@@ -573,6 +577,13 @@ export default function TasksPage() {
     if (json.success && Array.isArray(json.data)) setUsers(json.data);
   }, []);
   const fetchPages = useCallback(async (boardId: string) => {
+    const board = boards.find(b => String(b._id) === String(boardId));
+    if (board?.approval_status === "PENDING" && !isAdmin) {
+      setPages([]);
+      setSelectedPageId(null);
+      setSelectedPage(null);
+      return;
+    }
     const res = await fetch(`/api/pages?boardId=${boardId}`); const json = await res.json();
     if (json.success) {
       setPages(json.data);
@@ -590,9 +601,16 @@ export default function TasksPage() {
   useEffect(() => { fetchBoards(); fetchUsers(); }, [fetchBoards, fetchUsers]);
   useEffect(() => { if (selectedBoardId) fetchPages(selectedBoardId); }, [selectedBoardId, fetchPages]);
   useEffect(() => {
-    if (selectedBoardId && selectedPageId && selectedPage?.approval_status === "APPROVED") fetchTasks(selectedBoardId, selectedPageId);
-    else { setTasks([]); setLoading(false); }
-  }, [selectedBoardId, selectedPageId, selectedPage, fetchTasks]);
+    const selectedBoard = boards.find(b => String(b._id) === String(selectedBoardId));
+    const isBoardApproved = selectedBoard?.approval_status === "APPROVED" || (selectedBoard && isAdmin);
+
+    if (selectedBoardId && selectedPageId && selectedPage?.approval_status === "APPROVED" && isBoardApproved) {
+      fetchTasks(selectedBoardId, selectedPageId);
+    } else {
+      setTasks([]);
+      setLoading(false);
+    }
+  }, [selectedBoardId, selectedPageId, selectedPage, boards, isAdmin, fetchTasks]);
 
   const handleSelectPage = (page: any) => { setSelectedPageId(page._id); setSelectedPage(page); setSidebarOpen(false); };
 
@@ -687,6 +705,20 @@ export default function TasksPage() {
     }
     setDeleteBoardTarget(null);
     setIsDeletingBoard(false);
+  };
+
+  const handleConfirmDeletePage = async () => {
+    if (!deletePageTarget) return;
+    setIsDeletingPage(true);
+    await fetch(`/api/pages/${deletePageTarget.id}`, { method: "DELETE" });
+    const remaining = pages.filter(p => p._id !== deletePageTarget.id);
+    setPages(remaining);
+    if (selectedPageId === deletePageTarget.id) {
+      setSelectedPageId(remaining.length > 0 ? remaining[0]._id : null);
+      setSelectedPage(remaining.length > 0 ? remaining[0] : null);
+    }
+    setDeletePageTarget(null);
+    setIsDeletingPage(false);
   };
 
   const handleCreateTask = async (e: React.FormEvent, statusOverride?: string, parentId?: string) => {
@@ -921,10 +953,22 @@ export default function TasksPage() {
                                   setEditingPageId(page._id);
                                   setEditPageName(page.name);
                                 }}
-                                className="p-1 mr-1 rounded-md text-muted hover:text-foreground opacity-0 group-hover/page:opacity-100 transition-all shrink-0"
+                                className="p-1 rounded-md text-muted hover:text-foreground opacity-0 group-hover/page:opacity-100 transition-all shrink-0"
                                 title="Rename project"
                               >
                                 <Pencil size={10} />
+                              </button>
+                            )}
+                            {isAdmin && !isEditingThis && (
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setDeletePageTarget({ id: page._id, name: page.name });
+                                }}
+                                className="p-1 mr-1 rounded-md text-muted hover:text-red-500 opacity-0 group-hover/page:opacity-100 transition-all shrink-0"
+                                title="Delete project"
+                              >
+                                <Trash2 size={10} />
                               </button>
                             )}
                           </div>
@@ -1004,23 +1048,34 @@ export default function TasksPage() {
         </header>
 
         <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-          {(() => { const selectedBoard = boards.find(b => b._id === selectedBoardId); return selectedBoard?.approval_status === "PENDING" ? (
-            isAdmin ? <ApprovalScreen page={selectedBoard} apiPath={`/api/boards/${selectedBoard._id}`} onApprove={handleApproveBoard} onReject={handleRejectBoard} />
-              : (
+          {(() => {
+            const selectedBoard = boards.find(b => String(b._id) === String(selectedBoardId));
+            const isPendingBoard = selectedBoard?.approval_status === "PENDING";
+            
+            if (isPendingBoard) {
+              return isAdmin ? (
+                <ApprovalScreen page={selectedBoard} apiPath={`/api/boards/${selectedBoard?._id}`} onApprove={handleApproveBoard} onReject={handleRejectBoard} />
+              ) : (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col items-center justify-center gap-3 text-muted p-8">
                   <Lock size={32} className="text-amber-500/40" />
                   <p className="text-sm font-semibold text-amber-500">Workspace is awaiting admin approval.</p>
                 </motion.div>
-              )
-          ) : isPendingPage ? (
-            isAdmin ? <ApprovalScreen page={selectedPage} apiPath={`/api/pages/${selectedPage?._id}`} onApprove={handleApproveProject} onReject={handleRejectProject} />
-              : (
+              );
+            }
+            
+            if (isPendingPage) {
+              return isAdmin ? (
+                <ApprovalScreen page={selectedPage} apiPath={`/api/pages/${selectedPage?._id}`} onApprove={handleApproveProject} onReject={handleRejectProject} />
+              ) : (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col items-center justify-center gap-3 text-muted p-8">
                   <Lock size={32} className="text-amber-500/40" />
                   <p className="text-sm font-semibold text-amber-500">Awaiting admin approval.</p>
                 </motion.div>
-              )
-          ) : null; })() || (
+              );
+            }
+            
+            return null;
+          })() || (
             <>
               <div className="flex-1 overflow-auto no-scrollbar p-4 pt-2">
                 {loading ? (
@@ -1468,6 +1523,52 @@ export default function TasksPage() {
                 >
                   {isDeletingTask ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   {isDeletingTask ? "Deleting…" : "Yes, Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Project Confirmation Modal ───────────────────────────────── */}
+      <AnimatePresence>
+        {deletePageTarget && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !isDeletingPage && setDeletePageTarget(null)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.94, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.94, opacity: 0, y: 8 }} transition={spring} className="relative bg-surface border border-red-500/20 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                  <Trash2 size={18} className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Delete Project</h3>
+                  <p className="text-xs text-muted/70">This action cannot be undone</p>
+                </div>
+              </div>
+
+              <div className="bg-red-500/5 border border-red-500/15 rounded-xl px-4 py-3 mb-5 space-y-1">
+                <p className="text-sm text-foreground font-medium">Permanently delete project:</p>
+                <p className="text-sm font-bold text-red-400">"{deletePageTarget.name}"</p>
+                <p className="text-xs text-muted/70 pt-1">
+                  All tasks inside this project will be <span className="text-red-400 font-semibold">permanently deleted</span>.
+                </p>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setDeletePageTarget(null)}
+                  disabled={isDeletingPage}
+                  className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDeletePage}
+                  disabled={isDeletingPage}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-all disabled:opacity-60"
+                >
+                  {isDeletingPage ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {isDeletingPage ? "Deleting…" : "Yes, Delete"}
                 </button>
               </div>
             </motion.div>
