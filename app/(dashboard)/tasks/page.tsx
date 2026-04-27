@@ -293,7 +293,7 @@ function ListRow({
               <Plus size={10} />
             </button>
             <button
-              onClick={e => { e.stopPropagation(); if (confirm(`Delete "${task.title}"?`)) onDelete(String(task._id)); }}
+              onClick={e => { e.stopPropagation(); onDelete(String(task._id)); }}
               className="p-1 hover:bg-red-500/8 rounded text-muted/40 hover:text-red-500 transition-colors"
               title="Delete"
             >
@@ -544,6 +544,8 @@ export default function TasksPage() {
   const [manageMembersBoardId, setManageMembersBoardId] = useState<string | null>(null);
   const [deleteBoardTarget, setDeleteBoardTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeletingBoard, setIsDeletingBoard] = useState(false);
+  const [deleteTaskTarget, setDeleteTaskTarget] = useState<{ id: string; title: string } | null>(null);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editPageName, setEditPageName] = useState("");
@@ -708,10 +710,24 @@ export default function TasksPage() {
     else setTasks(prev => prev.map(t => String(t._id) === String(updatedTask._id) ? updatedTask : t));
   };
 
-  const handleDeleteTask = async (id: string) => {
+  const handleDeleteTask = (id: string) => {
+    const task = tasks.find(t => String(t._id) === id);
+    if (task) {
+      setDeleteTaskTarget({ id, title: task.title });
+    }
+  };
+
+  const handleConfirmDeleteTask = async () => {
+    if (!deleteTaskTarget) return;
+    setIsDeletingTask(true);
+    const id = deleteTaskTarget.id;
     const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
     const json = await res.json();
-    if (json.success) setTasks(prev => prev.filter(t => String(t._id) !== id && String(t.parent_task_id) !== id));
+    if (json.success) {
+      setTasks(prev => prev.filter(t => String(t._id) !== id && String(t.parent_task_id) !== id));
+      setDeleteTaskTarget(null);
+    }
+    setIsDeletingTask(false);
   };
 
   // ── Kanban DnD handlers ───────────────────────────────────────────────────────
@@ -1409,6 +1425,49 @@ export default function TasksPage() {
                 >
                   {isDeletingBoard ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   {isDeletingBoard ? "Deleting…" : "Yes, Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Task Confirmation Modal ─────────────────────────────────── */}
+      <AnimatePresence>
+        {deleteTaskTarget && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !isDeletingTask && setDeleteTaskTarget(null)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.94, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.94, opacity: 0, y: 8 }} transition={spring} className="relative bg-surface border border-red-500/20 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                  <Trash2 size={18} className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Delete Task</h3>
+                  <p className="text-xs text-muted/70">This action cannot be undone</p>
+                </div>
+              </div>
+
+              <div className="bg-red-500/5 border border-red-500/15 rounded-xl px-4 py-3 mb-5 space-y-1">
+                <p className="text-sm text-foreground font-medium">Permanently delete task:</p>
+                <p className="text-sm font-bold text-red-400">"{deleteTaskTarget.title}"</p>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setDeleteTaskTarget(null)}
+                  disabled={isDeletingTask}
+                  className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDeleteTask}
+                  disabled={isDeletingTask}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-all disabled:opacity-60"
+                >
+                  {isDeletingTask ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {isDeletingTask ? "Deleting…" : "Yes, Delete"}
                 </button>
               </div>
             </motion.div>
