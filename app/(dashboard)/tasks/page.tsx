@@ -68,7 +68,7 @@ function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; user
       <AnimatePresence>
         {open && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
-            className="absolute top-full mt-1 left-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[160px] py-1 max-h-48 overflow-y-auto">
+            className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[160px] py-1 max-h-48 overflow-y-auto">
             {users.length === 0 ? (
               <div className="px-3 py-2 text-[10px] text-muted text-center italic">No users found</div>
             ) : (
@@ -120,7 +120,7 @@ function PriorityPicker({ value, onChange }: { value: string; onChange: (v: stri
       <AnimatePresence>
         {open && (
            <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
-            className="absolute top-full mt-1 right-0 sm:left-auto sm:right-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[120px] py-1 overflow-hidden">
+            className="absolute top-full mt-1 right-0 sm:left-auto sm:right-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[120px] py-1 overflow-hidden">
             {priorities.map(p => (
               <button key={p.value} onClick={() => { onChange(p.value); setOpen(false); }} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${value === p.value ? "text-foreground bg-muted/5" : "text-muted"}`}>
                 <Flag size={11} className={p.color} />
@@ -156,7 +156,7 @@ function StatusPicker({ value, activeStatuses, onChange }: { value: string; acti
       <AnimatePresence>
         {open && (
            <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
-            className="absolute top-full mt-1 left-0 z-50 bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[150px] py-1 overflow-hidden">
+            className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[150px] py-1 overflow-hidden">
             {activeStatuses.map(s => {
               const hx = statusColor(s.color);
               const SIcon = STATUS_ICONS[s.name] || CircleDashed;
@@ -259,7 +259,7 @@ function ListRow({
         layout
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex items-center border-b border-muted/15 hover:bg-muted/5 transition-colors group cursor-pointer"
+        className="flex items-center border-b border-muted/15 hover:bg-muted/5 transition-colors group cursor-pointer relative hover:z-[60]"
         style={{
           paddingLeft: depth * 20 + (depth > 0 ? 8 : 0),
           borderLeft: `2.5px solid ${depth === 0 ? hex : "transparent"}`,
@@ -407,10 +407,10 @@ function GroupedListView({
         const colTasks = rootTasks.filter(t => (t.status || "TODO") === col.name);
         const isCollapsed = collapsedGroups.has(col.name);
         return (
-          <div key={col.name} className="rounded-xl overflow-hidden border border-muted/15 bg-surface/50">
+          <div key={col.name} className="rounded-xl border border-muted/15 bg-surface/50">
             {/* Group header */}
             <div
-              className="flex items-center gap-2 px-3 py-2 border-b border-muted/15 hover:bg-muted/5 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 border-b border-muted/15 hover:bg-muted/5 transition-colors rounded-t-xl"
               style={{ borderLeft: `3px solid ${hex}` }}
             >
               <button onClick={() => toggleGroup(col.name)} className="flex items-center gap-2 flex-1 min-w-0">
@@ -824,9 +824,11 @@ export default function TasksPage() {
       <div className="px-4 py-3 border-b border-muted/10 flex items-center justify-between">
         <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted/60">Workspaces</span>
         <div className="flex items-center gap-1">
-          <button onClick={() => setIsCreateBoardOpen(true)} className="p-1 rounded-lg hover:bg-muted/10 text-muted/50 hover:text-foreground transition-colors" title={isAdmin ? "New Workspace" : "Request Workspace"}>
-            <Plus size={13} />
-          </button>
+          {isAdmin && (
+            <button onClick={() => setIsCreateBoardOpen(true)} className="p-1 rounded-lg hover:bg-muted/10 text-muted/50 hover:text-foreground transition-colors" title="New Workspace">
+              <Plus size={13} />
+            </button>
+          )}
           <button className="sm:hidden p-1 rounded-lg hover:bg-muted/10 text-muted" onClick={() => setSidebarOpen(false)}>
             <X size={14} />
           </button>

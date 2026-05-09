@@ -4,6 +4,9 @@ export type NotificationType =
   | "LEAVE_REQUEST"
   | "LEAVE_APPROVED"
   | "LEAVE_REJECTED"
+  | "WFH_REQUEST"
+  | "WFH_APPROVED"
+  | "WFH_REJECTED"
   | "TASK_ASSIGNED"
   | "TASK_OVERDUE"
   | "TASK_DELETED";
@@ -25,7 +28,7 @@ const NotificationSchema = new Schema<INotification>(
     recipient_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
-      enum: ["LEAVE_REQUEST", "LEAVE_APPROVED", "LEAVE_REJECTED", "TASK_ASSIGNED", "TASK_OVERDUE", "TASK_DELETED"],
+      enum: ["LEAVE_REQUEST", "LEAVE_APPROVED", "LEAVE_REJECTED", "WFH_REQUEST", "WFH_APPROVED", "WFH_REJECTED", "TASK_ASSIGNED", "TASK_OVERDUE", "TASK_DELETED"],
       required: true,
     },
     title: { type: String, required: true },

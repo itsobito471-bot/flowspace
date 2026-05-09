@@ -99,8 +99,15 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function initials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+function initials(name: string | undefined | null) {
+  if (!name || typeof name !== "string") return "?";
+  return name
+    .split(" ")
+    .filter((n) => n.length > 0)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 const STATUS_STYLES = {
@@ -403,12 +410,14 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Admin Action Modal (Approve / Reject)
 // ─────────────────────────────────────────────────────────────────────────────
-function AdminActionModal({ leave, action, open, onClose, onActioned }: {
+function AdminActionModal({ leave, wfh, action, open, onClose, onActioned, mode }: {
   leave: LeaveRequest | null;
+  wfh: WFHRequest | null;
   action: "APPROVED" | "REJECTED" | null;
   open: boolean;
   onClose: () => void;
-  onActioned: (updated: LeaveRequest) => void;
+  onActioned: (updated: any) => void;
+  mode: "leave" | "wfh";
 }) {
   const [lop, setLop] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -417,23 +426,25 @@ function AdminActionModal({ leave, action, open, onClose, onActioned }: {
 
   useEffect(() => {
     if (!open) { setLop(false); setApiError(null); setEmpBalance(null); return; }
-    // Fetch the employee's categorized leave balances when modal opens
-    if (leave?.user_id?._id) {
+    if (mode === "leave" && leave?.user_id?._id) {
       fetch(`/api/leave/balance?userId=${leave.user_id._id}`)
         .then(r => r.json())
         .then(j => j.success && setEmpBalance(j.data))
         .catch(() => { });
     }
-  }, [open, leave]);
+  }, [open, leave, mode]);
 
   async function handleConfirm() {
-    if (!leave || !action) return;
+    const targetId = mode === "leave" ? leave?._id : wfh?._id;
+    if (!targetId || !action) return;
+    
     setSubmitting(true); setApiError(null);
     try {
-      const res = await fetch(`/api/leave/${leave._id}`, {
+      const endpoint = mode === "leave" ? `/api/leave/${targetId}` : `/api/wfh-requests/${targetId}`;
+      const res = await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action, is_loss_of_pay: lop }),
+        body: JSON.stringify({ status: action, is_loss_of_pay: mode === "leave" ? lop : undefined }),
       });
       const json = await res.json();
       if (!json.success) { setApiError(json.message); return; }
@@ -443,12 +454,12 @@ function AdminActionModal({ leave, action, open, onClose, onActioned }: {
     finally { setSubmitting(false); }
   }
 
-  if (!leave || !action) return null;
+  const target = mode === "leave" ? leave : wfh;
+  if (!target || !action) return null;
   const isApprove = action === "APPROVED";
-  const days = daysBetween(leave.start_date, leave.end_date);
+  const days = mode === "leave" ? daysBetween(leave!.start_date, leave!.end_date) : 1;
 
-  // Find specific balance for context
-  const targetBal = empBalance?.balances.find(b => b.type === leave.leave_type);
+  const targetBal = mode === "leave" ? empBalance?.balances.find(b => b.type === leave!.leave_type) : null;
 
   return (
     <AnimatePresence>
@@ -468,18 +479,18 @@ function AdminActionModal({ leave, action, open, onClose, onActioned }: {
               </div>
 
               <h2 className="text-base font-bold text-foreground mb-1">
-                {isApprove ? "Approve Leave?" : "Reject Leave?"}
+                {isApprove ? `Approve ${mode === "leave" ? "Leave" : "WFH"}?` : `Reject ${mode === "leave" ? "Leave" : "WFH"}?`}
               </h2>
-              <p className="text-sm text-muted mb-1">{leave.user_id.name}</p>
+              <p className="text-sm text-muted mb-1">{target.user_id?.name}</p>
 
               <div className="flex flex-col items-center gap-1 my-3 bg-muted/5 rounded-xl border border-muted/10 py-2.5">
-                <span className="text-[10px] uppercase tracking-widest font-bold text-cyan">{leave.leave_type || "Time Off"}</span>
+                <span className="text-[10px] uppercase tracking-widest font-bold text-cyan">{mode === "leave" ? (leave!.leave_type || "Time Off") : "Work From Home"}</span>
                 <p className="text-xs text-muted/80">
-                  {fmt(leave.start_date)} – {fmt(leave.end_date)} · {days} day{days !== 1 ? "s" : ""}
+                  {mode === "leave" ? `${fmt(leave!.start_date)} – ${fmt(leave!.end_date)} · ${days} day${days !== 1 ? "s" : ""}` : fmt(wfh!.date)}
                 </p>
-                {targetBal && (
+                {mode === "leave" && targetBal && (
                   <p className="text-[10px] text-muted font-semibold">
-                    Remaining {leave.leave_type}: <span className={targetBal.remaining < days && isApprove ? "text-red-400" : "text-foreground"}>{targetBal.remaining} days</span>
+                    Remaining {leave!.leave_type}: <span className={targetBal.remaining < days && isApprove ? "text-red-400" : "text-foreground"}>{targetBal.remaining} days</span>
                   </p>
                 )}
               </div>
@@ -618,11 +629,11 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject, onViewReason }: {
         <td className="px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan/40 to-violet/40 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-              {initials(leave.user_id.name)}
+              {initials(leave.user_id?.name)}
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground leading-none">{leave.user_id.name}</p>
-              <p className="text-[11px] text-muted mt-0.5">{leave.user_id.employee_id || leave.user_id.email}</p>
+              <p className="text-sm font-semibold text-foreground leading-none">{leave.user_id?.name || "Unknown User"}</p>
+              <p className="text-[11px] text-muted mt-0.5">{leave.user_id?.employee_id || leave.user_id?.email || "No ID"}</p>
             </div>
           </div>
         </td>
@@ -664,8 +675,8 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject, onViewReason }: {
         )}
       </td>
       {isAdmin && (leave.status === "PENDING" || leave.status === "APPROVED") ? (
-        <td className="px-5 py-4">
-          <div className="flex items-center gap-2">
+        <td className="px-5 py-4 text-right">
+          <div className="flex items-center justify-end gap-2">
             {leave.status === "PENDING" && (
               <button 
                 onClick={(e) => { e.stopPropagation(); onApprove?.(); }}
@@ -690,9 +701,11 @@ function LeaveRow({ leave, isAdmin, onApprove, onReject, onViewReason }: {
 // ─────────────────────────────────────────────────────────────────────────────
 //  WFH Row Component
 // ─────────────────────────────────────────────────────────────────────────────
-function WFHRow({ request, isAdmin, onCancel }: {
+function WFHRow({ request, isAdmin, onApprove, onReject, onCancel }: {
   request: WFHRequest;
   isAdmin: boolean;
+  onApprove?: () => void;
+  onReject?: () => void;
   onCancel?: () => void;
 }) {
   const StatusIcon = STATUS_ICON[request.status];
@@ -705,11 +718,11 @@ function WFHRow({ request, isAdmin, onCancel }: {
         <td className="px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet/40 to-pink-500/40 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-              {initials(request.user_id.name)}
+              {initials(request.user_id?.name)}
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground leading-none">{request.user_id.name}</p>
-              <p className="text-[11px] text-muted mt-0.5">{request.user_id.employee_id || request.user_id.email}</p>
+              <p className="text-sm font-semibold text-foreground leading-none">{request.user_id?.name || "Unknown User"}</p>
+              <p className="text-[11px] text-muted mt-0.5">{request.user_id?.employee_id || request.user_id?.email || "No ID"}</p>
             </div>
           </div>
         </td>
@@ -732,13 +745,33 @@ function WFHRow({ request, isAdmin, onCancel }: {
         </span>
       </td>
       {!isAdmin && request.status === "PENDING" && (
-        <td className="px-5 py-4">
+        <td className="px-5 py-4 text-right">
           <button 
             onClick={onCancel}
             className="text-[11px] font-bold text-red-400 hover:text-red-500 transition-colors uppercase tracking-wider">
             Cancel
           </button>
         </td>
+      )}
+      {isAdmin && (request.status === "PENDING" || request.status === "APPROVED") ? (
+        <td className="px-5 py-4 text-right">
+          <div className="flex items-center justify-end gap-2">
+            {request.status === "PENDING" && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onApprove?.(); }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold transition-all">
+                <Check size={11} /> Approve
+              </button>
+            )}
+            <button 
+              onClick={(e) => { e.stopPropagation(); onReject?.(); }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[11px] font-bold transition-all">
+              <Ban size={11} /> {request.status === "APPROVED" ? "Revoke" : "Reject"}
+            </button>
+          </div>
+        </td>
+      ) : (
+        isAdmin && <td className="px-5 py-4" />
       )}
     </motion.tr>
   );
@@ -775,6 +808,7 @@ function LeavePageInner() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [wfhModalOpen, setWfhModalOpen] = useState(false);
   const [actionLeave, setActionLeave] = useState<LeaveRequest | null>(null);
+  const [actionWFH, setActionWFH] = useState<WFHRequest | null>(null);
   const [actionType, setActionType] = useState<"APPROVED" | "REJECTED" | null>(null);
   const [reasonLeave, setReasonLeave] = useState<LeaveRequest | null>(null);
 
@@ -868,6 +902,13 @@ function LeavePageInner() {
     );
   }
 
+  function handleActionedWFH(updated: WFHRequest) {
+    setWfhRequests((prev) =>
+      prev.map((r) => (r._id === updated._id ? updated : r))
+        .filter((r) => !(isAdmin && adminTab === "pending" && r.status !== "PENDING"))
+    );
+  }
+
   if (status === "loading") {
     return (
       <div className="flex h-full items-center justify-center">
@@ -889,10 +930,21 @@ function LeavePageInner() {
       />
       <AdminActionModal
         leave={actionLeave}
+        wfh={null}
         action={actionType}
         open={!!actionLeave}
         onClose={() => { setActionLeave(null); setActionType(null); }}
         onActioned={handleActioned}
+        mode="leave"
+      />
+      <AdminActionModal
+        leave={null}
+        wfh={actionWFH}
+        action={actionType}
+        open={!!actionWFH}
+        onClose={() => { setActionWFH(null); setActionType(null); }}
+        onActioned={handleActionedWFH}
+        mode="wfh"
       />
       <ReasonModal
         leave={reasonLeave}
@@ -1056,9 +1108,7 @@ function LeavePageInner() {
                     <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Dates</th>
                     <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Reason</th>
                     <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Status</th>
-                    {(!isAdmin || mainTab === "leave") && (
-                      <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70">Actions</th>
-                    )}
+                    <th className="px-5 py-3 text-[10px] font-bold tracking-[0.14em] uppercase text-muted/70 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1079,6 +1129,8 @@ function LeavePageInner() {
                         key={req._id}
                         request={req}
                         isAdmin={isAdmin}
+                        onApprove={() => { setActionWFH(req); setActionType("APPROVED"); }}
+                        onReject={() => { setActionWFH(req); setActionType("REJECTED"); }}
                         onCancel={() => handleCancelWFH(req._id)}
                       />
                     ))

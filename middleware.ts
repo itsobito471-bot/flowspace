@@ -52,18 +52,23 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
           { status: 429, headers: rateLimitHeaders }
         );
       }
-    } catch (error) {
-      console.error("Rate limit error (check Upstash token permissions):", error);
-      // Proceed without rate limiting if Redis fails
+    } catch (error: any) {
+      // Silently proceed if rate limiting fails due to Redis/Upstash issues (like NOPERM)
+      // This prevents the application from breaking if the rate limiter is misconfigured
+      if (error?.message?.includes("NOPERM")) {
+        console.error("Rate limit error: Your Upstash token lacks 'evalsha' permissions. Please ensure your token has 'Full Access' in the Upstash console.");
+      } else {
+        console.error("Rate limit error:", error);
+      }
     }
   }
 
   // 2. Determine if route needs next-auth protection
-  const isProtectedApi = pathname.startsWith("/api/") && 
-    !pathname.startsWith("/api/auth") && 
-    !pathname.startsWith("/api/enquiries") && 
+  const isProtectedApi = pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/auth") &&
+    !pathname.startsWith("/api/enquiries") &&
     !pathname.startsWith("/api/testimonials");
-    
+
   const isProtectedPage = pathname.startsWith("/(dashboard)") || pathname.startsWith("/(super-admin)");
 
   // 3. Execute Auth Middleware if necessary
