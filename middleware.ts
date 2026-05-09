@@ -53,13 +53,8 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
         );
       }
     } catch (error: any) {
-      // Silently proceed if rate limiting fails due to Redis/Upstash issues (like NOPERM)
-      // This prevents the application from breaking if the rate limiter is misconfigured
-      if (error?.message?.includes("NOPERM")) {
-        console.error("Rate limit error: Your Upstash token lacks 'evalsha' permissions. Please ensure your token has 'Full Access' in the Upstash console.");
-      } else {
-        console.error("Rate limit error:", error);
-      }
+      // Rate limiter failed unexpectedly – proceed without blocking the request
+      console.warn("Rate limit check skipped:", error?.message || error);
     }
   }
 
