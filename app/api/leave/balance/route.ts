@@ -49,16 +49,22 @@ export async function GET(request: Request) {
             _id: { status: "$status", leave_type_id: "$leave_type_id" },
             totalDays: {
               $sum: {
-                $add: [
-                  {
-                    $dateDiff: {
-                      startDate: "$start_date",
-                      endDate: "$end_date",
-                      unit: "day",
-                    },
-                  },
-                  1,
-                ],
+                $cond: {
+                  if: "$is_half_day",
+                  then: 0.5,
+                  else: {
+                    $add: [
+                      {
+                        $dateDiff: {
+                          startDate: "$start_date",
+                          endDate: "$end_date",
+                          unit: "day",
+                        },
+                      },
+                      1,
+                    ],
+                  }
+                }
               },
             },
           },

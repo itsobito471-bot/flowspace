@@ -11,7 +11,7 @@ export async function processPenaltyDeduction(
   totalPoints: number,
   pointIds: mongoose.Types.ObjectId[],
   year: number,
-  availableLeaveTypes: { name: string; quota: number }[],
+  availableLeaveTypes: { _id?: any; name: string; default_allowance: number }[],
   reasonPrefix: string = "Automatic automated deduction"
 ): Promise<void> {
   const today = new Date();
@@ -33,20 +33,25 @@ export async function processPenaltyDeduction(
     const start = new Date(l.start_date).getTime();
     const end = new Date(l.end_date).getTime();
     const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    takenCounts[l.leave_type] = (takenCounts[l.leave_type] || 0) + days;
+    const typeId = l.leave_type_id ? String(l.leave_type_id) : "UNPAID";
+    takenCounts[typeId] = (takenCounts[typeId] || 0) + days;
   }
 
-  let selectedLeaveType = "Loss of Pay"; // Default to punishment
+  let selectedLeaveTypeId: any = null;
+  let selectedLeaveTypeName = "Loss of Pay"; // Default to punishment
   let isLOP = true;
 
   for (const lt of availableLeaveTypes) {
+    if (!lt._id) continue;
+    const typeId = String(lt._id);
     const name = lt.name;
-    const quota = lt.quota;
-    const taken = takenCounts[name] || 0;
+    const quota = lt.default_allowance;
+    const taken = takenCounts[typeId] || 0;
 
     // Do they have a balance remaining for this specific leave type?
     if (taken < quota) {
-      selectedLeaveType = name; // We found a paid leave to use!
+      selectedLeaveTypeId = lt._id;
+      selectedLeaveTypeName = name; // We found a paid leave to use!
       isLOP = false;            // Spare them from Loss of Pay!
       break;                    // Stop looking, we found our deduction target.
     }
@@ -58,10 +63,11 @@ export async function processPenaltyDeduction(
     organization_id: new mongoose.Types.ObjectId(String(orgId)),
     start_date: today,
     end_date: today,
-    reason: `${reasonPrefix} (${selectedLeaveType}) for accumulating ${totalPoints} unpaid demerit points.`,
-    leave_type: selectedLeaveType,
+    reason: `${reasonPrefix} (${selectedLeaveTypeName}) for accumulating ${totalPoints} unpaid demerit points.`,
+    leave_type_id: selectedLeaveTypeId,
     status: "APPROVED",
     is_loss_of_pay: isLOP,
+    is_unpaid: isLOP,
     is_demerit_deduction: true,
   });
 
@@ -72,7 +78,7 @@ export async function processPenaltyDeduction(
       recipient_id: userId,
       type: "LEAVE_APPROVED",
       title: "Demerit Leave Deduction",
-      message: `An automatic deduction (${selectedLeaveType}) was applied on ${dateStr} due to accumulating ${totalPoints} unpaid demerit points.`,
+      message: `An automatic deduction (${selectedLeaveTypeName}) was applied on ${dateStr} due to accumulating ${totalPoints} unpaid demerit points.`,
       link: "/leave",
       related_id: leave._id,
       is_read: false,

@@ -11,6 +11,7 @@ export interface ILeave extends Document {
   is_unpaid: boolean;
   is_loss_of_pay: boolean;
   is_demerit_deduction?: boolean;
+  is_half_day?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +37,7 @@ const LeaveSchema = new Schema<ILeave>(
     is_loss_of_pay: { type: Boolean, default: false },
     is_unpaid: { type: Boolean, default: false },
     is_demerit_deduction: { type: Boolean, default: false },
+    is_half_day: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

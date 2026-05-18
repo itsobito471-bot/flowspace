@@ -131,7 +131,7 @@ export async function POST(request: Request) {
 
     const userName = session.user?.name ?? "An employee";
     const body = await request.json();
-    const { start_date, end_date, reason, leave_type_id, is_unpaid } = body;
+    const { start_date, end_date, reason, leave_type_id, is_unpaid, is_half_day } = body;
 
     if (!start_date || !end_date || !reason?.trim() || (!is_unpaid && !leave_type_id)) {
       return NextResponse.json(
@@ -198,6 +198,16 @@ export async function POST(request: Request) {
       actualLeaveDays++;
     }
 
+    if (is_half_day) {
+      if (start.getTime() !== end.getTime()) {
+        return NextResponse.json(
+          { success: false, message: "Half day leave must be on a single date." },
+          { status: 400 }
+        );
+      }
+      actualLeaveDays = 0.5;
+    }
+
     // If the user picked a date range that ONLY contains weekends/holidays
     if (actualLeaveDays === 0) {
       return NextResponse.json(
@@ -243,6 +253,7 @@ export async function POST(request: Request) {
       reason: reason.trim(),
       leave_type_id: is_unpaid ? undefined : leave_type_id,
       is_unpaid: !!is_unpaid,
+      is_half_day: !!is_half_day,
       status: "PENDING",
     });
 

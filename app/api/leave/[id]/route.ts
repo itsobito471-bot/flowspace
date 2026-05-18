@@ -116,7 +116,11 @@ export async function PATCH(
             _id: "$status",
             totalDays: {
               $sum: {
-                $add: [{ $dateDiff: { startDate: "$start_date", endDate: "$end_date", unit: "day" } }, 1],
+                $cond: {
+                  if: "$is_half_day",
+                  then: 0.5,
+                  else: { $add: [{ $dateDiff: { startDate: "$start_date", endDate: "$end_date", unit: "day" } }, 1] }
+                }
               },
             },
           },

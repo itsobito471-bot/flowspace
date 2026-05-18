@@ -47,6 +47,7 @@ interface LeaveRequest {
   status: "PENDING" | "APPROVED" | "REJECTED";
   is_loss_of_pay: boolean;
   is_demerit_deduction?: boolean;
+  is_half_day?: boolean;
   createdAt: string;
 }
 
@@ -164,7 +165,7 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
   onCreated: (leave: LeaveRequest) => void;
   balanceData: UserBalanceData | null;
 }) {
-  const [form, setForm] = useState({ leave_type: "", start_date: "", end_date: "", reason: "" });
+  const [form, setForm] = useState({ leave_type: "", start_date: "", end_date: "", reason: "", is_half_day: false });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -172,7 +173,7 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
 
   useEffect(() => {
     if (!open) return;
-    setForm({ leave_type: "", start_date: "", end_date: "", reason: "" });
+    setForm({ leave_type: "", start_date: "", end_date: "", reason: "", is_half_day: false });
     setErrors({}); setApiError(null); setSuccess(false);
   }, [open]);
 
@@ -190,6 +191,7 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
     if (!form.end_date) e.end_date = "Required";
     else if (form.start_date && form.end_date < form.start_date)
       e.end_date = "End date cannot be before start date";
+    if (form.is_half_day && form.start_date !== form.end_date) e.end_date = "Half day must be a single day";
     if (!form.reason.trim()) e.reason = "Please provide a reason";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -209,6 +211,7 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
           reason: form.reason,
           leave_type_id: form.leave_type === "UNPAID" ? undefined : form.leave_type,
           is_unpaid: form.leave_type === "UNPAID",
+          is_half_day: form.is_half_day,
         }),
       });
       const json = await res.json();
@@ -225,7 +228,7 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
     "placeholder:text-muted/40 focus:outline-none focus:border-cyan/40 transition-all";
 
   const days = form.start_date && form.end_date && form.end_date >= form.start_date
-    ? daysBetween(form.start_date, form.end_date)
+    ? (form.is_half_day ? 0.5 : daysBetween(form.start_date, form.end_date))
     : null;
 
   // Find the currently selected balance category to show the specific progress bar
@@ -343,19 +346,33 @@ function RequestLeaveModal({ open, onClose, onCreated, balanceData }: {
                     )}
                   </AnimatePresence>
 
+                  <div className="flex flex-col gap-1.5">
+                    <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                      <input type="checkbox" checked={form.is_half_day} onChange={(e) => {
+                        const checked = e.target.checked;
+                        setForm(p => ({ ...p, is_half_day: checked, end_date: checked ? p.start_date : p.end_date }));
+                      }} className="rounded border-muted/20 text-cyan focus:ring-cyan/20 w-4 h-4 bg-background" />
+                      Request Half Day
+                    </label>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80">Start Date</label>
                       <input type="date" value={form.start_date}
-                        onChange={(e) => { setForm(p => ({ ...p, start_date: e.target.value })); setErrors(p => ({ ...p, start_date: undefined })); }}
+                        onChange={(e) => { 
+                          const val = e.target.value;
+                          setForm(p => ({ ...p, start_date: val, end_date: p.is_half_day ? val : p.end_date })); 
+                          setErrors(p => ({ ...p, start_date: undefined, end_date: p.is_half_day ? undefined : p.end_date })); 
+                        }}
                         className={inputCls} />
                       {errors.start_date && <p className="text-[11px] text-red-400">{errors.start_date}</p>}
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[11px] font-semibold tracking-widest uppercase text-muted/80">End Date</label>
-                      <input type="date" value={form.end_date} min={form.start_date}
+                      <input type="date" value={form.end_date} min={form.start_date} disabled={form.is_half_day}
                         onChange={(e) => { setForm(p => ({ ...p, end_date: e.target.value })); setErrors(p => ({ ...p, end_date: undefined })); }}
-                        className={inputCls} />
+                        className={`${inputCls} ${form.is_half_day ? "opacity-50 cursor-not-allowed" : ""}`} />
                       {errors.end_date && <p className="text-[11px] text-red-400">{errors.end_date}</p>}
                     </div>
                   </div>
@@ -457,7 +474,7 @@ function AdminActionModal({ leave, wfh, action, open, onClose, onActioned, mode 
   const target = mode === "leave" ? leave : wfh;
   if (!target || !action) return null;
   const isApprove = action === "APPROVED";
-  const days = mode === "leave" ? daysBetween(leave!.start_date, leave!.end_date) : 1;
+  const days = mode === "leave" ? (leave!.is_half_day ? 0.5 : daysBetween(leave!.start_date, leave!.end_date)) : 1;
 
   const targetBal = mode === "leave" ? empBalance?.balances.find(b => b.type === leave!.leave_type) : null;
 
@@ -484,7 +501,10 @@ function AdminActionModal({ leave, wfh, action, open, onClose, onActioned, mode 
               <p className="text-sm text-muted mb-1">{target.user_id?.name}</p>
 
               <div className="flex flex-col items-center gap-1 my-3 bg-muted/5 rounded-xl border border-muted/10 py-2.5">
-                <span className="text-[10px] uppercase tracking-widest font-bold text-cyan">{mode === "leave" ? (leave!.leave_type || "Time Off") : "Work From Home"}</span>
+                <span className="text-[10px] uppercase tracking-widest font-bold text-cyan">
+                  {mode === "leave" ? (leave!.leave_type || "Time Off") : "Work From Home"}
+                  {mode === "leave" && leave!.is_half_day && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-cyan/10 text-cyan">Half Day</span>}
+                </span>
                 <p className="text-xs text-muted/80">
                   {mode === "leave" ? `${fmt(leave!.start_date)} – ${fmt(leave!.end_date)} · ${days} day${days !== 1 ? "s" : ""}` : fmt(wfh!.date)}
                 </p>
