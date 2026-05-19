@@ -7,7 +7,7 @@ import {
   LayoutGrid, List, Plus, Search, Loader2, Lock,
   CheckCircle2, Clock, CircleDashed, Eye, ChevronRight,
   Layers, FileText, X, Sparkles, Menu, ChevronDown,
-  UserPlus, Calendar, Flag, GitMerge, Trash2, Settings2, GripVertical, Circle, Pencil
+  UserPlus, Calendar, Flag, GitMerge, Trash2, Settings2, GripVertical, Circle, Pencil, Filter, User
 } from "lucide-react";
 import TaskModal from "@/src/components/tasks/TaskModal";
 
@@ -92,6 +92,84 @@ function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; user
   );
 }
 
+// ─── Status multi-select filter picker ─────────────────────────────────────
+function StatusFilterPicker({ activeStatuses, selected, onChange }: {
+  activeStatuses: any[];
+  selected: Set<string>;
+  onChange: (s: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const toggle = (name: string) => {
+    const next = new Set(selected);
+    next.has(name) ? next.delete(name) : next.add(name);
+    onChange(next);
+  };
+
+  const label = selected.size === 0 ? "All Statuses" : selected.size === 1 ? [...selected][0] : `${selected.size} statuses`;
+  const isActive = selected.size > 0;
+
+  return (
+    <div ref={ref} className="relative hidden sm:flex items-center">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 text-xs border rounded-xl transition-all ${
+          isActive ? "border-violet/30 text-violet bg-violet/5" : "border-muted/15 text-muted bg-muted/5"
+        }`}
+      >
+        <CircleDashed size={11} className={isActive ? "text-violet" : "text-muted/50"} />
+        <span className="max-w-[100px] truncate">{label}</span>
+        <ChevronDown size={10} className="text-muted/40" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute top-full mt-1.5 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[160px] py-1.5 overflow-hidden"
+          >
+            {selected.size > 0 && (
+              <button
+                onClick={() => onChange(new Set())}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] text-muted/60 hover:text-muted transition-colors border-b border-muted/10 mb-1"
+              >
+                Clear all
+              </button>
+            )}
+            {activeStatuses.map((s: any) => {
+              const hex = statusColor(s.color);
+              const checked = selected.has(s.name);
+              return (
+                <button
+                  key={s.name}
+                  onClick={() => toggle(s.name)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${
+                    checked ? "text-foreground" : "text-muted"
+                  }`}
+                >
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: hex }}
+                  />
+                  <span className="flex-1 truncate font-medium text-[11px] uppercase tracking-wide">{s.name}</span>
+                  {checked && <div className="w-1.5 h-1.5 rounded-full bg-violet shrink-0" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Inline priority picker ──────────────────────────────────────────────────
 function PriorityPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -119,7 +197,7 @@ function PriorityPicker({ value, onChange }: { value: string; onChange: (v: stri
       </button>
       <AnimatePresence>
         {open && (
-           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
+          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
             className="absolute top-full mt-1 right-0 sm:left-auto sm:right-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[120px] py-1 overflow-hidden">
             {priorities.map(p => (
               <button key={p.value} onClick={() => { onChange(p.value); setOpen(false); }} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${value === p.value ? "text-foreground bg-muted/5" : "text-muted"}`}>
@@ -155,7 +233,7 @@ function StatusPicker({ value, activeStatuses, onChange }: { value: string; acti
       </button>
       <AnimatePresence>
         {open && (
-           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
+          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
             className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[150px] py-1 overflow-hidden">
             {activeStatuses.map(s => {
               const hx = statusColor(s.color);
@@ -377,124 +455,241 @@ function ListRow({
 
 // ─── Grouped List View (ClickUp-style) ───────────────────────────────────────
 function GroupedListView({
-  tasks, activeStatuses, users, onOpen, onTaskUpdated,
-  addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle,
-  addingForStatus, setAddingForStatus, onDelete, currentUserId
+  tasks,
+  activeStatuses,
+  users,
+  onOpen,
+  onTaskUpdated,
+  addingSubtaskFor,
+  setAddingSubtaskFor,
+  handleCreateTask,
+  isCreating,
+  newTaskTitle,
+  setNewTaskTitle,
+  addingForStatus,
+  setAddingForStatus,
+  onDelete,
+  currentUserId
 }: {
-  tasks: any[]; activeStatuses: any[]; users: any[];
-  onOpen: (id: string) => void; onTaskUpdated: (t: any) => void;
-  addingSubtaskFor: string | null; setAddingSubtaskFor: (id: string | null) => void;
-  handleCreateTask: (e: React.FormEvent, statusOverride?: string, parentId?: string) => Promise<void>;
-  isCreating: boolean; newTaskTitle: string; setNewTaskTitle: (v: string) => void;
-  addingForStatus: string | null; setAddingForStatus: (status: string | null) => void;
-  onDelete: (id: string) => void; currentUserId: string | null;
+  tasks: any[];
+  activeStatuses: any[];
+  users: any[];
+  onOpen: (id: string) => void;
+  onTaskUpdated: (t: any) => void;
+  addingSubtaskFor: string | null;
+  setAddingSubtaskFor: (id: string | null) => void;
+  handleCreateTask: (
+    e: React.FormEvent,
+    statusOverride?: string,
+    parentId?: string
+  ) => Promise<void>;
+  isCreating: boolean;
+  newTaskTitle: string;
+  setNewTaskTitle: (v: string) => void;
+  addingForStatus: string | null;
+  setAddingForStatus: (status: string | null) => void;
+  onDelete: (id: string) => void;
+  currentUserId: string | null;
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const toggleGroup = (s: string) =>
-    setCollapsedGroups(prev => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
-  const toggleExpand = (id: string) =>
-    setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleGroup = (s: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+
+      if (next.has(s)) {
+        next.delete(s);
+      } else {
+        next.add(s);
+      }
+
+      return next;
+    });
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      return next;
+    });
+  };
 
   const rootTasks = tasks.filter(t => !t.parent_task_id);
+  // Always render all status groups — parent controls which statuses are passed
+  const visibleStatuses = activeStatuses;
 
   return (
     <div className="space-y-2 max-w-full">
-      {activeStatuses.map((col: any) => {
-        const hex = statusColor(col.color);
-        const Icon = STATUS_ICONS[col.name] || CircleDashed;
-        const colTasks = rootTasks.filter(t => (t.status || "TODO") === col.name);
-        const isCollapsed = collapsedGroups.has(col.name);
-        return (
-          <div key={col.name} className="rounded-xl border border-muted/15 bg-surface/50">
-            {/* Group header */}
+      {visibleStatuses.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+          <CircleDashed size={32} className="text-muted/20" />
+          <p className="text-sm text-muted/50 font-medium">
+            No tasks match the current filters.
+          </p>
+        </div>
+      ) : (
+        visibleStatuses.map((col: any) => {
+          const hex = statusColor(col.color);
+          const Icon = STATUS_ICONS[col.name] || CircleDashed;
+
+          const colTasks = rootTasks.filter(
+            t => (t.status || "TODO") === col.name
+          );
+
+          const isCollapsed = collapsedGroups.has(col.name);
+
+          return (
             <div
-              className="flex items-center gap-2 px-3 py-2 border-b border-muted/15 hover:bg-muted/5 transition-colors rounded-t-xl"
-              style={{ borderLeft: `3px solid ${hex}` }}
+              key={col.name}
+              className="rounded-xl border border-muted/15 bg-surface/50"
             >
-              <button onClick={() => toggleGroup(col.name)} className="flex items-center gap-2 flex-1 min-w-0">
-                <motion.div animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.15 }}>
-                  <ChevronDown size={12} className="text-muted/60 shrink-0" />
-                </motion.div>
-                <div
-                  className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase"
-                  style={{ backgroundColor: `${hex}18`, color: hex, border: `1px solid ${hex}30` }}
+              {/* Group Header */}
+              <div
+                className="flex items-center gap-2 px-3 py-2 border-b border-muted/15 hover:bg-muted/5 transition-colors rounded-t-xl"
+                style={{ borderLeft: `3px solid ${hex}` }}
+              >
+                <button
+                  onClick={() => toggleGroup(col.name)}
+                  className="flex items-center gap-2 flex-1 min-w-0"
                 >
-                  <Icon size={9} />
-                  {col.name}
-                </div>
-                <span className="text-[10px] text-muted/60 font-semibold bg-muted/10 px-1.5 py-0.5 rounded-full">{colTasks.length}</span>
-              </button>
-            </div>
-
-            {!isCollapsed && (
-              <>
-                {/* Column headers */}
-                <div className="flex items-center px-3 py-1.5 border-b border-muted/15 text-[9px] font-bold uppercase tracking-widest text-muted/60">
-                  <div className="w-6 shrink-0" />
-                  <div className="w-4 shrink-0" />
-                  <div className="flex-1 pl-2">Name</div>
-                  <div className="w-[72px] text-center shrink-0">Assignee</div>
-                  <div className="w-24 text-center shrink-0">Due Date</div>
-                  <div className="w-10 text-center shrink-0 hidden sm:block">Pri</div>
-                </div>
-
-                {colTasks.map(t => (
-                  <ListRow
-                    key={String(t._id)}
-                    task={t}
-                    depth={0}
-                    activeStatuses={activeStatuses}
-                    users={users}
-                    onOpen={onOpen}
-                    onUpdate={onTaskUpdated}
-                    allTasks={tasks}
-                    onExpand={toggleExpand}
-                    expanded={expanded}
-                    addingSubtaskFor={addingSubtaskFor}
-                    setAddingSubtaskFor={setAddingSubtaskFor}
-                    handleCreateTask={handleCreateTask}
-                    isCreating={isCreating}
-                    newTaskTitle={newTaskTitle}
-                    setNewTaskTitle={setNewTaskTitle}
-                    onDelete={onDelete}
-                    currentUserId={currentUserId}
-                  />
-                ))}
-
-                {addingForStatus === col.name ? (
-                  <div className="flex items-center gap-2 px-8 py-2 border-t border-muted/15 bg-muted/5">
-                    <div className="w-4 h-4 rounded-full border-2 border-muted/40 shrink-0" />
-                    <form onSubmit={e => handleCreateTask(e, col.name)} className="flex items-center gap-2 flex-1">
-                      <input
-                        autoFocus
-                        value={newTaskTitle}
-                        onChange={e => setNewTaskTitle(e.target.value)}
-                        placeholder="Task name…"
-                        className="flex-1 text-[13px] bg-transparent text-foreground placeholder:text-muted/60 focus:outline-none font-medium"
-                      />
-                      <button type="button" onClick={() => { setAddingForStatus(null); setNewTaskTitle(""); }} className="p-1 rounded hover:bg-muted/10 text-muted/70"><X size={11} /></button>
-                      <button disabled={isCreating || !newTaskTitle.trim()} className="px-2.5 py-1 bg-foreground text-background text-[11px] font-bold rounded-lg hover:opacity-90 disabled:opacity-30 transition-all">Save</button>
-                    </form>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingForStatus(col.name)}
-                    className="flex items-center gap-2 px-8 py-2.5 text-[12px] text-muted/60 hover:text-muted/80 hover:bg-muted/5 transition-colors w-full group/add border-t border-muted/15"
+                  <motion.div
+                    animate={{ rotate: isCollapsed ? -90 : 0 }}
+                    transition={{ duration: 0.15 }}
                   >
-                    <Plus size={11} className="group-hover/add:text-foreground/60 transition-colors" />
-                    Add task
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })}
+                    <ChevronDown
+                      size={12}
+                      className="text-muted/60 shrink-0"
+                    />
+                  </motion.div>
+
+                  <div
+                    className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase"
+                    style={{
+                      backgroundColor: `${hex}18`,
+                      color: hex,
+                      border: `1px solid ${hex}30`
+                    }}
+                  >
+                    <Icon size={9} />
+                    {col.name}
+                  </div>
+
+                  <span className="text-[10px] text-muted/60 font-semibold bg-muted/10 px-1.5 py-0.5 rounded-full">
+                    {colTasks.length}
+                  </span>
+                </button>
+              </div>
+
+              {!isCollapsed && (
+                <>
+                  {/* Column Headers */}
+                  <div className="flex items-center px-3 py-1.5 border-b border-muted/15 text-[9px] font-bold uppercase tracking-widest text-muted/60">
+                    <div className="w-6 shrink-0" />
+                    <div className="w-4 shrink-0" />
+                    <div className="flex-1 pl-2">Name</div>
+                    <div className="w-[72px] text-center shrink-0">
+                      Assignee
+                    </div>
+                    <div className="w-24 text-center shrink-0">
+                      Due Date
+                    </div>
+                    <div className="w-10 text-center shrink-0 hidden sm:block">
+                      Pri
+                    </div>
+                  </div>
+
+                  {/* Tasks */}
+                  {colTasks.map(t => (
+                    <ListRow
+                      key={String(t._id)}
+                      task={t}
+                      depth={0}
+                      activeStatuses={activeStatuses}
+                      users={users}
+                      onOpen={onOpen}
+                      onUpdate={onTaskUpdated}
+                      allTasks={tasks}
+                      onExpand={toggleExpand}
+                      expanded={expanded}
+                      addingSubtaskFor={addingSubtaskFor}
+                      setAddingSubtaskFor={setAddingSubtaskFor}
+                      handleCreateTask={handleCreateTask}
+                      isCreating={isCreating}
+                      newTaskTitle={newTaskTitle}
+                      setNewTaskTitle={setNewTaskTitle}
+                      onDelete={onDelete}
+                      currentUserId={currentUserId}
+                    />
+                  ))}
+
+                  {/* Add Task Section */}
+                  {addingForStatus === col.name ? (
+                    <div className="flex items-center gap-2 px-8 py-2 border-t border-muted/15 bg-muted/5">
+                      <div className="w-4 h-4 rounded-full border-2 border-muted/40 shrink-0" />
+
+                      <form
+                        onSubmit={e => handleCreateTask(e, col.name)}
+                        className="flex items-center gap-2 flex-1"
+                      >
+                        <input
+                          autoFocus
+                          value={newTaskTitle}
+                          onChange={e => setNewTaskTitle(e.target.value)}
+                          placeholder="Task name…"
+                          className="flex-1 text-[13px] bg-transparent text-foreground placeholder:text-muted/60 focus:outline-none font-medium"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddingForStatus(null);
+                            setNewTaskTitle("");
+                          }}
+                          className="p-1 rounded hover:bg-muted/10 text-muted/70"
+                        >
+                          <X size={11} />
+                        </button>
+
+                        <button
+                          disabled={
+                            isCreating || !newTaskTitle.trim()
+                          }
+                          className="px-2.5 py-1 bg-foreground text-background text-[11px] font-bold rounded-lg hover:opacity-90 disabled:opacity-30 transition-all"
+                        >
+                          Save
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setAddingForStatus(col.name)}
+                      className="flex items-center gap-2 px-8 py-2.5 text-[12px] text-muted/60 hover:text-muted/80 hover:bg-muted/5 transition-colors w-full group/add border-t border-muted/15"
+                    >
+                      <Plus
+                        size={11}
+                        className="group-hover/add:text-foreground/60 transition-colors"
+                      />
+                      Add task
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
+
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
@@ -509,6 +704,8 @@ export default function TasksPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"KANBAN" | "LIST">("LIST");
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("");
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
 
   // ── Drag-and-drop state (Kanban) ─────────────────────────────────────────────
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
@@ -591,9 +788,11 @@ export default function TasksPage() {
       setSelectedPageId(first?._id || null); setSelectedPage(first);
     }
   }, []);
-  const fetchTasks = useCallback(async (boardId: string, pageId: string) => {
+  const fetchTasks = useCallback(async (boardId: string, pageId: string, assigneeId: string = "") => {
     setLoading(true);
-    const res = await fetch(`/api/tasks?boardId=${boardId}&pageId=${pageId}`); const json = await res.json();
+    let url = `/api/tasks?boardId=${boardId}&pageId=${pageId}`;
+    if (assigneeId) url += `&assigneeId=${assigneeId}`;
+    const res = await fetch(url); const json = await res.json();
     if (json.success) setTasks(json.data);
     setLoading(false);
   }, []);
@@ -605,12 +804,12 @@ export default function TasksPage() {
     const isBoardApproved = selectedBoard?.approval_status === "APPROVED" || (selectedBoard && isAdmin);
 
     if (selectedBoardId && selectedPageId && selectedPage?.approval_status === "APPROVED" && isBoardApproved) {
-      fetchTasks(selectedBoardId, selectedPageId);
+      fetchTasks(selectedBoardId, selectedPageId, selectedAssignee);
     } else {
       setTasks([]);
       setLoading(false);
     }
-  }, [selectedBoardId, selectedPageId, selectedPage, boards, isAdmin, fetchTasks]);
+  }, [selectedBoardId, selectedPageId, selectedPage, boards, isAdmin, fetchTasks, selectedAssignee]);
 
   const handleSelectPage = (page: any) => { setSelectedPageId(page._id); setSelectedPage(page); setSidebarOpen(false); };
 
@@ -727,7 +926,7 @@ export default function TasksPage() {
     setIsCreating(true);
     const board = boards.find(b => b._id === selectedBoardId);
     const status = statusOverride || board?.statuses?.[0]?.name || "TODO";
-    
+
     const body: any = { title: newTaskTitle, board_id: selectedBoardId, page_id: selectedPageId, status };
     if (parentId) body.parent_task_id = parentId;
 
@@ -814,7 +1013,15 @@ export default function TasksPage() {
   };
 
   const activeStatuses = boards.find(b => b._id === selectedBoardId)?.statuses || [];
-  const filteredTasks = tasks.filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()));
+  const filteredTasks = tasks.filter(t => {
+    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (selectedStatuses.size > 0 && !selectedStatuses.has(t.status || "TODO")) return false;
+    return true;
+  });
+  // When no status filter: show all groups. When filter active: only show selected.
+  const visibleActiveStatuses = selectedStatuses.size > 0
+    ? activeStatuses.filter((s: any) => selectedStatuses.has(s.name))
+    : activeStatuses;
   const isPendingPage = selectedPage?.approval_status === "PENDING";
   const pendingCount = pages.filter(p => p.approval_status === "PENDING").length;
 
@@ -1038,6 +1245,31 @@ export default function TasksPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {/* Assignee filter dropdown */}
+            <div className="relative hidden sm:flex items-center">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                <Filter size={11} className={selectedAssignee ? "text-cyan" : "text-muted/50"} />
+              </div>
+              <select
+                value={selectedAssignee}
+                onChange={e => setSelectedAssignee(e.target.value)}
+                className={`bg-muted/5 border rounded-xl pl-7 pr-6 py-1.5 text-xs focus:outline-none focus:border-cyan/40 transition-all appearance-none cursor-pointer ${selectedAssignee ? "border-cyan/30 text-cyan bg-cyan/5" : "border-muted/15 text-muted"
+                  }`}
+              >
+                <option value="">All Assignees</option>
+                {users.map((u: any) => (
+                  <option key={u._id} value={u._id}>{u.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted/40 pointer-events-none" />
+            </div>
+
+            {/* Status multi-select filter */}
+            <StatusFilterPicker
+              activeStatuses={activeStatuses}
+              selected={selectedStatuses}
+              onChange={setSelectedStatuses}
+            />
             <div className="relative hidden sm:block">
               <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/50" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="bg-muted/5 border border-muted/15 rounded-xl pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40 w-40 lg:w-48 transition-all" />
@@ -1053,7 +1285,7 @@ export default function TasksPage() {
           {(() => {
             const selectedBoard = boards.find(b => String(b._id) === String(selectedBoardId));
             const isPendingBoard = selectedBoard?.approval_status === "PENDING";
-            
+
             if (isPendingBoard) {
               return isAdmin ? (
                 <ApprovalScreen page={selectedBoard} apiPath={`/api/boards/${selectedBoard?._id}`} onApprove={handleApproveBoard} onReject={handleRejectBoard} />
@@ -1064,7 +1296,7 @@ export default function TasksPage() {
                 </motion.div>
               );
             }
-            
+
             if (isPendingPage) {
               return isAdmin ? (
                 <ApprovalScreen page={selectedPage} apiPath={`/api/pages/${selectedPage?._id}`} onApprove={handleApproveProject} onReject={handleRejectProject} />
@@ -1075,188 +1307,187 @@ export default function TasksPage() {
                 </motion.div>
               );
             }
-            
+
             return null;
           })() || (
-            <>
-              <div className="flex-1 overflow-auto no-scrollbar p-4 pt-2">
-                {loading ? (
-                  <div className="flex items-center justify-center h-full"><Loader2 size={22} className="animate-spin text-cyan" /></div>
-                ) : view === "LIST" ? (
-                  <GroupedListView
-                    tasks={filteredTasks}
-                    activeStatuses={activeStatuses}
-                    users={users}
-                    onOpen={id => setSelectedTaskId(id)}
-                    onTaskUpdated={handleTaskUpdated}
-                    addingSubtaskFor={addingSubtaskFor}
-                    setAddingSubtaskFor={setAddingSubtaskFor}
-                    handleCreateTask={handleCreateTask}
-                    isCreating={isCreating}
-                    newTaskTitle={newTaskTitle}
-                    setNewTaskTitle={setNewTaskTitle}
-                    addingForStatus={addingForStatus}
-                    setAddingForStatus={setAddingForStatus}
-                    onDelete={handleDeleteTask}
-                    currentUserId={currentUserId}
-                  />
-                ) : (
-                  // Kanban — drag-and-drop
-                  <div className="flex gap-4 h-full pb-4" style={{ minWidth: `${activeStatuses.length * 288}px` }}>
-                    {activeStatuses.map((col: any) => {
-                      const Icon = STATUS_ICONS[col.name] || CircleDashed;
-                      const hex = statusColor(col.color);
-                      const colTasks = filteredTasks.filter(t => !t.parent_task_id && (t.status || "TODO") === col.name);
-                      const isOver = dragOverColumn === col.name;
-                      const isDraggingFromHere = draggingTaskId && colTasks.some(t => String(t._id) === draggingTaskId);
-                      return (
-                        <div
-                          key={col.name}
-                          className={`flex flex-col shrink-0 rounded-2xl border transition-all overflow-hidden ${
-                            isOver
+              <>
+                <div className="flex-1 overflow-auto no-scrollbar p-4 pt-2">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-full"><Loader2 size={22} className="animate-spin text-cyan" /></div>
+                  ) : view === "LIST" ? (
+                    <GroupedListView
+                      tasks={filteredTasks}
+                      activeStatuses={visibleActiveStatuses}
+                      users={users}
+                      onOpen={id => setSelectedTaskId(id)}
+                      onTaskUpdated={handleTaskUpdated}
+                      addingSubtaskFor={addingSubtaskFor}
+                      setAddingSubtaskFor={setAddingSubtaskFor}
+                      handleCreateTask={handleCreateTask}
+                      isCreating={isCreating}
+                      newTaskTitle={newTaskTitle}
+                      setNewTaskTitle={setNewTaskTitle}
+                      addingForStatus={addingForStatus}
+                      setAddingForStatus={setAddingForStatus}
+                      onDelete={handleDeleteTask}
+                      currentUserId={currentUserId}
+                    />
+                  ) : (
+                    // Kanban — drag-and-drop
+                    <div className="flex gap-4 h-full pb-4" style={{ minWidth: `${activeStatuses.length * 288}px` }}>
+                      {activeStatuses.map((col: any) => {
+                        const Icon = STATUS_ICONS[col.name] || CircleDashed;
+                        const hex = statusColor(col.color);
+                        const colTasks = filteredTasks.filter(t => !t.parent_task_id && (t.status || "TODO") === col.name);
+                        const isOver = dragOverColumn === col.name;
+                        const isDraggingFromHere = draggingTaskId && colTasks.some(t => String(t._id) === draggingTaskId);
+                        return (
+                          <div
+                            key={col.name}
+                            className={`flex flex-col shrink-0 rounded-2xl border transition-all overflow-hidden ${isOver
                               ? "border-2 shadow-lg scale-[1.005]"
                               : "border-muted/10"
-                          } bg-surface/60`}
-                          style={{
-                            width: "280px",
-                            borderColor: isOver ? hex : undefined,
-                            boxShadow: isOver ? `0 0 0 2px ${hex}30, 0 8px 32px ${hex}18` : undefined,
-                          }}
-                          onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
-                          onDragEnter={e => handleColumnDragEnter(e, col.name)}
-                          onDragLeave={e => handleColumnDragLeave(e, col.name)}
-                          onDrop={e => handleColumnDrop(e, col.name)}
-                        >
-                          {/* Column header */}
-                          <div
-                            className="px-4 py-3 flex items-center justify-between border-b transition-colors"
-                            style={{ borderColor: isOver ? `${hex}30` : undefined }}
+                              } bg-surface/60`}
+                            style={{
+                              width: "280px",
+                              borderColor: isOver ? hex : undefined,
+                              boxShadow: isOver ? `0 0 0 2px ${hex}30, 0 8px 32px ${hex}18` : undefined,
+                            }}
+                            onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                            onDragEnter={e => handleColumnDragEnter(e, col.name)}
+                            onDragLeave={e => handleColumnDragLeave(e, col.name)}
+                            onDrop={e => handleColumnDrop(e, col.name)}
                           >
-                            <div className="flex items-center gap-2">
-                              <Icon size={13} style={{ color: hex }} />
-                              <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: hex }}>{col.name}</span>
-                            </div>
-                            <span className="text-[10px] text-muted font-bold bg-muted/10 px-2 py-0.5 rounded-full">{colTasks.length}</span>
-                          </div>
-
-                          {/* Drop hint */}
-                          {isOver && !isDraggingFromHere && (
+                            {/* Column header */}
                             <div
-                              className="mx-2.5 mt-2.5 rounded-xl border-2 border-dashed py-4 flex items-center justify-center text-[11px] font-semibold"
-                              style={{ borderColor: `${hex}50`, color: hex, backgroundColor: `${hex}08` }}
+                              className="px-4 py-3 flex items-center justify-between border-b transition-colors"
+                              style={{ borderColor: isOver ? `${hex}30` : undefined }}
                             >
-                              Drop here → {col.name}
+                              <div className="flex items-center gap-2">
+                                <Icon size={13} style={{ color: hex }} />
+                                <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: hex }}>{col.name}</span>
+                              </div>
+                              <span className="text-[10px] text-muted font-bold bg-muted/10 px-2 py-0.5 rounded-full">{colTasks.length}</span>
                             </div>
-                          )}
 
-                          <div className="flex-1 overflow-y-auto p-2.5 space-y-2 no-scrollbar">
-                            <AnimatePresence>
-                              {colTasks.map(t => {
-                                const isDragging = String(t._id) === draggingTaskId;
-                                const subtaskCount = tasks.filter(st => String(st.parent_task_id) === String(t._id)).length;
-                                const priorityColors: Record<string, string> = { URGENT: "#ef4444", HIGH: "#f59e0b", NORMAL: "#6366f1", LOW: "#94a3b8" };
-                                const pColor = priorityColors[t.priority || "NORMAL"];
-                                const isOverdue = t.due_date && new Date(t.due_date) < new Date();
-                                return (
-                                  <motion.div
-                                    key={String(t._id)}
-                                    layout
-                                    layoutId={String(t._id)}
-                                    initial={{ opacity: 0, y: 6 }}
-                                    animate={{ opacity: isDragging ? 0.4 : 1, y: 0, scale: isDragging ? 0.97 : 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={spring}
-                                  >
-                                    <div
-                                      draggable
-                                      onDragStart={(ev: React.DragEvent<HTMLDivElement>) => handleDragStart(ev, String(t._id))}
-                                      onDragEnd={handleDragEnd}
-                                      onClick={() => !isDragging && setSelectedTaskId(String(t._id))}
-                                      className={`rounded-xl cursor-grab active:cursor-grabbing transition-all group select-none overflow-hidden border ${isDragging ? "border-muted/5 opacity-50" : "border-muted/10 bg-surface hover:border-muted/20 hover:shadow-md"}`}
+                            {/* Drop hint */}
+                            {isOver && !isDraggingFromHere && (
+                              <div
+                                className="mx-2.5 mt-2.5 rounded-xl border-2 border-dashed py-4 flex items-center justify-center text-[11px] font-semibold"
+                                style={{ borderColor: `${hex}50`, color: hex, backgroundColor: `${hex}08` }}
+                              >
+                                Drop here → {col.name}
+                              </div>
+                            )}
+
+                            <div className="flex-1 overflow-y-auto p-2.5 space-y-2 no-scrollbar">
+                              <AnimatePresence>
+                                {colTasks.map(t => {
+                                  const isDragging = String(t._id) === draggingTaskId;
+                                  const subtaskCount = tasks.filter(st => String(st.parent_task_id) === String(t._id)).length;
+                                  const priorityColors: Record<string, string> = { URGENT: "#ef4444", HIGH: "#f59e0b", NORMAL: "#6366f1", LOW: "#94a3b8" };
+                                  const pColor = priorityColors[t.priority || "NORMAL"];
+                                  const isOverdue = t.due_date && new Date(t.due_date) < new Date();
+                                  return (
+                                    <motion.div
+                                      key={String(t._id)}
+                                      layout
+                                      layoutId={String(t._id)}
+                                      initial={{ opacity: 0, y: 6 }}
+                                      animate={{ opacity: isDragging ? 0.4 : 1, y: 0, scale: isDragging ? 0.97 : 1 }}
+                                      exit={{ opacity: 0, scale: 0.95 }}
+                                      transition={spring}
                                     >
-                                      {/* Colored top accent bar */}
-                                      <div className="h-0.5 w-full" style={{ backgroundColor: hex, opacity: 0.7 }} />
+                                      <div
+                                        draggable
+                                        onDragStart={(ev: React.DragEvent<HTMLDivElement>) => handleDragStart(ev, String(t._id))}
+                                        onDragEnd={handleDragEnd}
+                                        onClick={() => !isDragging && setSelectedTaskId(String(t._id))}
+                                        className={`rounded-xl cursor-grab active:cursor-grabbing transition-all group select-none overflow-hidden border ${isDragging ? "border-muted/5 opacity-50" : "border-muted/10 bg-surface hover:border-muted/20 hover:shadow-md"}`}
+                                      >
+                                        {/* Colored top accent bar */}
+                                        <div className="h-0.5 w-full" style={{ backgroundColor: hex, opacity: 0.7 }} />
 
-                                      <div className="p-3">
-                                        {/* Title row */}
-                                        <div className="flex items-start justify-between gap-2 mb-3">
-                                          <h4 className="text-[13px] font-medium text-foreground/80 group-hover:text-foreground transition-colors leading-snug flex-1">{t.title}</h4>
-                                          <GripVertical size={11} className="text-muted/15 group-hover:text-muted/35 transition-colors shrink-0 mt-0.5" />
-                                        </div>
+                                        <div className="p-3">
+                                          {/* Title row */}
+                                          <div className="flex items-start justify-between gap-2 mb-3">
+                                            <h4 className="text-[13px] font-medium text-foreground/80 group-hover:text-foreground transition-colors leading-snug flex-1">{t.title}</h4>
+                                            <GripVertical size={11} className="text-muted/15 group-hover:text-muted/35 transition-colors shrink-0 mt-0.5" />
+                                          </div>
 
-                                        {/* Tags / badges row */}
-                                        <div className="flex flex-wrap items-center gap-1 mb-3">
-                                          {t.priority && t.priority !== "NORMAL" && (
-                                            <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: pColor, backgroundColor: `${pColor}15` }}>
-                                              <Flag size={7} />{t.priority}
-                                            </span>
-                                          )}
-                                          {subtaskCount > 0 && (
-                                            <span className="flex items-center gap-0.5 text-[9px] text-muted/50 bg-muted/8 px-1.5 py-0.5 rounded-md border border-muted/10 font-semibold">
-                                              <GitMerge size={7} /> {subtaskCount}
-                                            </span>
-                                          )}
-                                          {t.due_date && (
-                                            <span className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-semibold ${isOverdue ? "text-red-500 bg-red-500/10" : "text-muted/50 bg-muted/8"}`}>
-                                              <Clock size={7} />{new Date(t.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        {/* Bottom row: assignees */}
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex -space-x-1">
-                                            {t.assignee_ids?.slice(0, 3).map((a: any, i: number) => (
-                                              <div key={i} title={a.name} className="w-5 h-5 rounded-full border-2 border-surface bg-gradient-to-br from-violet/40 to-cyan/30 flex items-center justify-center text-[7px] font-bold text-white overflow-hidden">
-                                                {a.avatar ? <img src={a.avatar} alt="" className="w-full h-full object-cover" /> : a.name?.[0]}
-                                              </div>
-                                            ))}
-                                            {!t.assignee_ids?.length && (
-                                              <div className="w-5 h-5 rounded-full border border-dashed border-muted/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <UserPlus size={8} className="text-muted/30" />
-                                              </div>
+                                          {/* Tags / badges row */}
+                                          <div className="flex flex-wrap items-center gap-1 mb-3">
+                                            {t.priority && t.priority !== "NORMAL" && (
+                                              <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: pColor, backgroundColor: `${pColor}15` }}>
+                                                <Flag size={7} />{t.priority}
+                                              </span>
                                             )}
+                                            {subtaskCount > 0 && (
+                                              <span className="flex items-center gap-0.5 text-[9px] text-muted/50 bg-muted/8 px-1.5 py-0.5 rounded-md border border-muted/10 font-semibold">
+                                                <GitMerge size={7} /> {subtaskCount}
+                                              </span>
+                                            )}
+                                            {t.due_date && (
+                                              <span className={`flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-semibold ${isOverdue ? "text-red-500 bg-red-500/10" : "text-muted/50 bg-muted/8"}`}>
+                                                <Clock size={7} />{new Date(t.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {/* Bottom row: assignees */}
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex -space-x-1">
+                                              {t.assignee_ids?.slice(0, 3).map((a: any, i: number) => (
+                                                <div key={i} title={a.name} className="w-5 h-5 rounded-full border-2 border-surface bg-gradient-to-br from-violet/40 to-cyan/30 flex items-center justify-center text-[7px] font-bold text-white overflow-hidden">
+                                                  {a.avatar ? <img src={a.avatar} alt="" className="w-full h-full object-cover" /> : a.name?.[0]}
+                                                </div>
+                                              ))}
+                                              {!t.assignee_ids?.length && (
+                                                <div className="w-5 h-5 rounded-full border border-dashed border-muted/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  <UserPlus size={8} className="text-muted/30" />
+                                                </div>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  </motion.div>
-                                );
-                              })}
-                            </AnimatePresence>
+                                    </motion.div>
+                                  );
+                                })}
+                              </AnimatePresence>
 
-                            {/* Add task quick-create */}
-                            {addingForStatus === col.name ? (
-                              <div className="p-2">
-                                <form onSubmit={e => handleCreateTask(e, col.name)} className="flex items-center gap-2">
-                                  <input
-                                    autoFocus
-                                    value={newTaskTitle}
-                                    onChange={e => setNewTaskTitle(e.target.value)}
-                                    placeholder="Task name…"
-                                    className="flex-1 text-xs bg-muted/5 border border-muted/15 rounded-xl px-3 py-2 text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40"
-                                  />
-                                  <button type="button" onClick={() => { setAddingForStatus(null); setNewTaskTitle(""); }} className="p-1.5 rounded hover:bg-muted/10 text-muted"><X size={11} /></button>
-                                  <button disabled={isCreating || !newTaskTitle.trim()} className="p-1.5 btn-primary rounded-lg disabled:opacity-40"><Plus size={11} /></button>
-                                </form>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setAddingForStatus(col.name)}
-                                className="w-full flex items-center gap-1.5 px-3 py-2 text-[11px] text-muted/60 hover:text-muted/80 hover:bg-muted/10 rounded-xl transition-colors"
-                              >
-                                <Plus size={11} /><span>Add task</span>
-                              </button>
-                            )}
+                              {/* Add task quick-create */}
+                              {addingForStatus === col.name ? (
+                                <div className="p-2">
+                                  <form onSubmit={e => handleCreateTask(e, col.name)} className="flex items-center gap-2">
+                                    <input
+                                      autoFocus
+                                      value={newTaskTitle}
+                                      onChange={e => setNewTaskTitle(e.target.value)}
+                                      placeholder="Task name…"
+                                      className="flex-1 text-xs bg-muted/5 border border-muted/15 rounded-xl px-3 py-2 text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40"
+                                    />
+                                    <button type="button" onClick={() => { setAddingForStatus(null); setNewTaskTitle(""); }} className="p-1.5 rounded hover:bg-muted/10 text-muted"><X size={11} /></button>
+                                    <button disabled={isCreating || !newTaskTitle.trim()} className="p-1.5 btn-primary rounded-lg disabled:opacity-40"><Plus size={11} /></button>
+                                  </form>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setAddingForStatus(col.name)}
+                                  className="w-full flex items-center gap-1.5 px-3 py-2 text-[11px] text-muted/60 hover:text-muted/80 hover:bg-muted/10 rounded-xl transition-colors"
+                                >
+                                  <Plus size={11} /><span>Add task</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
         </div>
       </main>
 
@@ -1269,15 +1500,15 @@ export default function TasksPage() {
               <div className="flex items-center gap-3 mb-5"><div className="w-8 h-8 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center"><Layers size={14} className="text-cyan" /></div><h3 className="text-base font-bold text-foreground">{isAdmin ? "New Workspace" : "Request Workspace"}</h3></div>
               <form onSubmit={handleCreateBoard} className="space-y-4">
                 <input autoFocus value={newBoardName} onChange={e => setNewBoardName(e.target.value)} placeholder="Workspace name…" className="w-full bg-muted/5 border border-muted/15 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40" />
-                
+
                 {isAdmin && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase font-bold text-muted/60 tracking-wider">Members ({newBoardMembers.length})</span>
-                  <div className="flex items-center gap-2 flex-wrap h-10 px-3 bg-muted/5 border border-muted/15 rounded-xl">
-                    <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} users={users} onChange={setNewBoardMembers} />
-                    <span className="text-[10px] text-muted line-clamp-1 flex-1">{newBoardMembers.length > 0 ? "Users selected" : "Click to select members"}</span>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-muted/60 tracking-wider">Members ({newBoardMembers.length})</span>
+                    <div className="flex items-center gap-2 flex-wrap h-10 px-3 bg-muted/5 border border-muted/15 rounded-xl">
+                      <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} users={users} onChange={setNewBoardMembers} />
+                      <span className="text-[10px] text-muted line-clamp-1 flex-1">{newBoardMembers.length > 0 ? "Users selected" : "Click to select members"}</span>
+                    </div>
                   </div>
-                </div>
                 )}
 
                 {!isAdmin && (
@@ -1380,8 +1611,8 @@ export default function TasksPage() {
                       <span className="flex-1 text-xs font-semibold text-foreground font-mono tracking-wide">{status.name}</span>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {/* move up/down */}
-                        <button disabled={idx === 0} onClick={() => setEditingStatuses(prev => { const a = [...prev]; [a[idx-1], a[idx]] = [a[idx], a[idx-1]]; return a; })} className="p-1 rounded text-muted hover:text-foreground disabled:opacity-20 transition-colors text-[9px]">↑</button>
-                        <button disabled={idx === editingStatuses.length - 1} onClick={() => setEditingStatuses(prev => { const a = [...prev]; [a[idx], a[idx+1]] = [a[idx+1], a[idx]]; return a; })} className="p-1 rounded text-muted hover:text-foreground disabled:opacity-20 transition-colors text-[9px]">↓</button>
+                        <button disabled={idx === 0} onClick={() => setEditingStatuses(prev => { const a = [...prev];[a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; return a; })} className="p-1 rounded text-muted hover:text-foreground disabled:opacity-20 transition-colors text-[9px]">↑</button>
+                        <button disabled={idx === editingStatuses.length - 1} onClick={() => setEditingStatuses(prev => { const a = [...prev];[a[idx], a[idx + 1]] = [a[idx + 1], a[idx]]; return a; })} className="p-1 rounded text-muted hover:text-foreground disabled:opacity-20 transition-colors text-[9px]">↓</button>
                         <button onClick={() => setEditingStatuses(prev => prev.filter((_, i) => i !== idx))} className="p-1 rounded text-muted hover:text-red-500 transition-colors"><Trash2 size={11} /></button>
                       </div>
                     </motion.div>

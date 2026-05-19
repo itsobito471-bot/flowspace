@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     const parentId = searchParams.get("parentId");
     const boardId = searchParams.get("boardId");
     const pageId = searchParams.get("pageId");
+    const assigneeId = searchParams.get("assigneeId");
 
     await dbConnect();
     
@@ -31,6 +32,10 @@ export async function GET(request: Request) {
     }
     if (pageId) {
       query.page_id = pageId;
+    }
+    // Filter by assignee — works alongside all existing filters
+    if (assigneeId && assigneeId.trim().length > 0) {
+      query.assignee_ids = assigneeId;
     }
 
     const tasks = await Task.find(query)
