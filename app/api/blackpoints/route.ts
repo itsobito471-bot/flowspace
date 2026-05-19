@@ -124,7 +124,7 @@ export async function POST(request: Request) {
       if (totalManualPoints >= manualThreshold) {
         const pointIds = unresolvedManuals.map(p => p._id);
         const availableLeaveTypes = settings?.leave_types || [];
-        
+
         const { processPenaltyDeduction } = await import("@/src/lib/services/penaltyService");
         await processPenaltyDeduction(
           userId,
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, data: newPoint }, { status: 201 });
   } catch (error: any) {
-    console.error("[POST /api/blackpoints]", error);
+    // console.error("[POST /api/blackpoints]", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
