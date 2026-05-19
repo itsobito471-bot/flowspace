@@ -123,10 +123,7 @@ export async function POST(request: Request) {
 
       if (totalManualPoints >= manualThreshold) {
         const pointIds = unresolvedManuals.map(p => p._id);
-        const availableLeaveTypes = (settings?.leave_types || []).map((lt: any) => ({
-          name: lt.name,
-          quota: lt.default_allowance || 0,
-        }));
+        const availableLeaveTypes = settings?.leave_types || [];
         
         const { processPenaltyDeduction } = await import("@/src/lib/services/penaltyService");
         await processPenaltyDeduction(
