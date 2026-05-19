@@ -62,7 +62,8 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
   const isProtectedApi = pathname.startsWith("/api/") &&
     !pathname.startsWith("/api/auth") &&
     !pathname.startsWith("/api/enquiries") &&
-    !pathname.startsWith("/api/testimonials");
+    !pathname.startsWith("/api/testimonials") &&
+    !pathname.startsWith("/api/seed-super-admin");
 
   const isProtectedPage = pathname.startsWith("/(dashboard)") || pathname.startsWith("/(super-admin)");
 
