@@ -41,6 +41,11 @@
 
   /* Border */
   --border-subtle:    rgba(0, 0, 0, 0.07);
+
+  /* Login Image */
+  --login-image-filter: invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.1);
+  --login-image-opacity: 0.65;
+  --login-image-blend: multiply;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -69,6 +74,11 @@
 
   /* Border */
   --border-subtle:    rgba(255, 255, 255, 0.06);
+
+  /* Login Image */
+  --login-image-filter: hue-rotate(180deg) brightness(0.6) contrast(1.2);
+  --login-image-opacity: 0.8;
+  --login-image-blend: screen;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

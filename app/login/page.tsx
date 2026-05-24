@@ -71,12 +71,14 @@ function LoginContent() {
             <div className="hidden lg:flex w-[55%] flex-col justify-between p-12 relative overflow-hidden bg-obsidian">
                 {/* Abstract wavy background image placeholder */}
                 <div
-                    className="absolute inset-0 z-0 opacity-40 dark:opacity-80 mix-blend-multiply dark:mix-blend-screen"
+                    className="absolute inset-0 z-0"
                     style={{
                         backgroundImage: 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        filter: 'hue-rotate(180deg) brightness(0.6) contrast(1.2)'
+                        filter: 'var(--login-image-filter)',
+                        opacity: 'var(--login-image-opacity)',
+                        mixBlendMode: 'var(--login-image-blend)' as any
                     }}
                 />
                 {/* Gradient overlay to smoothly blend edges if needed */}

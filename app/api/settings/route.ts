@@ -25,9 +25,9 @@ export async function GET(request: Request) {
 
     // If no settings document exists yet for this year, create the default one
     if (!settings) {
-      settings = await CompanySettings.create({
+      const doc = await CompanySettings.create({
         year,
-        leave_types: [{ name: "Casual Leave", quota: 10 }],
+        leave_types: [{ name: "Casual Leave", default_allowance: 10 }],
         weekend_policy: [0], // Default Sunday off
         specific_weekend_rules: [],
         allow_multi_checkins: false,
@@ -37,6 +37,14 @@ export async function GET(request: Request) {
         overtime_hourly_rate: 0,
         organization_id: orgId,
       });
+      settings = doc.toObject();
+    }
+
+    if (settings && settings.leave_types) {
+      settings.leave_types = settings.leave_types.map((lt: any) => ({
+        ...lt,
+        quota: lt.default_allowance ?? lt.quota,
+      }));
     }
 
     // Fetch public holidays for this year
@@ -97,10 +105,17 @@ export async function POST(request: Request) {
     // 1. Update/Create Settings for the Year
     let settings = await CompanySettings.findOne({ year });
 
+    const mappedLeaveTypes = Array.isArray(leave_types)
+      ? leave_types.map((lt: any) => ({
+          name: lt.name,
+          default_allowance: lt.default_allowance !== undefined ? lt.default_allowance : lt.quota,
+        }))
+      : leave_types;
+
     if (!settings) {
       settings = new CompanySettings({
         year,
-        leave_types: leave_types,
+        leave_types: mappedLeaveTypes,
         weekend_policy,
         specific_weekend_rules,
         allow_multi_checkins: allow_multi_checkins || false,
@@ -113,7 +128,7 @@ export async function POST(request: Request) {
       });
       await settings.save();
     } else {
-      settings.leave_types = leave_types;
+      settings.leave_types = mappedLeaveTypes;
       settings.weekend_policy = weekend_policy;
       settings.specific_weekend_rules = specific_weekend_rules;
       if (allow_multi_checkins !== undefined) {
