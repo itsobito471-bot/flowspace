@@ -98,7 +98,7 @@ export async function PATCH(
         .lean()
         .exec(),
 
-      CompanySettings.findOne({ year })
+      CompanySettings.findOne({ organization_id: orgId, year })
         .select("annual_leave_quota")
         .lean()
         .exec(),

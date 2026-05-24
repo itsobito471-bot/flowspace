@@ -25,14 +25,19 @@ export async function GET(request: Request) {
 
     await dbConnect();
 
+    const userDoc = await User.findById(targetUserId).lean().exec();
+    if (!userDoc) {
+      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    }
+
+    const orgId = userDoc.organization_id;
     const year = new Date().getFullYear();
     const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
     const yearEnd = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
     // Run both queries in parallel
-    const [userDoc, settingsDoc, aggArray] = await Promise.all([
-      User.findById(targetUserId).lean().exec(),
-      CompanySettings.findOne({ year }).select("leave_types").lean().exec(),
+    const [settingsDoc, aggArray] = await Promise.all([
+      CompanySettings.findOne({ organization_id: orgId, year }).select("leave_types").lean().exec(),
 
       // Aggregate approved & pending leave days, grouped by BOTH status AND leave_type_id
       Leave.aggregate([
@@ -71,10 +76,6 @@ export async function GET(request: Request) {
         },
       ]).exec(),
     ]);
-
-    if (!userDoc) {
-      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
-    }
 
     // Extract the leave categories defined by the Admin
     const leaveTypes = (settingsDoc as any)?.leave_types || [];

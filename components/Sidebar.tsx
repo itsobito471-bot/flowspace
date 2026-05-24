@@ -20,6 +20,9 @@ import {
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -62,6 +65,13 @@ const NAV_ITEMS: NavItem[] = [
 function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+
+  const { data: usageData } = useSWR("/api/organization/usage", fetcher);
+  const usage = usageData?.data || {
+    planName: "Pro Plan",
+    employeeCount: 0,
+    maxUsers: 10
+  };
 
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.adminOnly || userRole === "ADMIN"
@@ -158,16 +168,18 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
             <div className="flex items-center gap-2.5 mb-2">
               <Zap size={14} className="text-cyan" />
               <span className="text-[11px] font-bold tracking-widest uppercase text-foreground">
-                Pro Plan
+                {usage.planName}
               </span>
             </div>
-            <p className="text-[10px] text-muted mb-2">Syncing across 12 nodes</p>
+            <p className="text-[10px] text-muted mb-2">
+              {usage.employeeCount} of {usage.maxUsers} employees
+            </p>
             {/* Progress bar */}
             <div className="h-0.5 bg-muted/20 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-cyan to-violet rounded-full"
                 initial={{ width: "0%" }}
-                animate={{ width: "72%" }}
+                animate={{ width: `${Math.min(100, (usage.employeeCount / usage.maxUsers) * 100)}%` }}
                 transition={{ delay: 0.5, duration: 1.2, ease: "easeOut" }}
               />
             </div>

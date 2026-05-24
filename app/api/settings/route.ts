@@ -103,10 +103,12 @@ export async function POST(request: Request) {
     }
 
     // 1. Update/Create Settings for the Year
-    let settings = await CompanySettings.findOne({ year });
+    const orgId = (session?.user as any)?.orgId;
+    let settings = await CompanySettings.findOne({ organization_id: orgId, year });
 
     const mappedLeaveTypes = Array.isArray(leave_types)
       ? leave_types.map((lt: any) => ({
+          ...(lt._id ? { _id: lt._id } : {}),
           name: lt.name,
           default_allowance: lt.default_allowance !== undefined ? lt.default_allowance : lt.quota,
         }))
