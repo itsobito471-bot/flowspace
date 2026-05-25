@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/src/lib/mongodb";
 import { User } from "@/src/lib/models/User";
-import "@/src/lib/models/Role"; // ensure Role schema is registered for .populate()
+import { Role } from "@/src/lib/models/Role";
+import { Board } from "@/src/lib/models/Board";
 import { Attendance } from "@/src/lib/models/Attendance";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import bcrypt from "bcryptjs";
@@ -36,6 +37,48 @@ export async function GET(request: Request) {
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
     const skip = (page - 1) * limit;
+    const boardId = searchParams.get("boardId");
+    const search = searchParams.get("search") || "";
+
+    // 1. Board constraint filtering
+    let boardMatch: any = null;
+    if (boardId) {
+      const board = await Board.findById(boardId).lean();
+      if (board) {
+        // Find all roles in this organization that are ADMIN level
+        const adminRoles = await Role.find({ organization_id: myOrgId, level: "ADMIN" }).select("_id").lean();
+        const adminRoleIds = adminRoles.map(r => r._id);
+
+        const boardUsers = [...(board.members || []), board.creator_id];
+        boardMatch = {
+          $or: [
+            { _id: { $in: boardUsers } },
+            { role_id: { $in: adminRoleIds } },
+            { user_type: "SUPER_ADMIN" }
+          ]
+        };
+      }
+    }
+
+    // 2. Search query filtering
+    let searchMatch: any = null;
+    if (search) {
+      searchMatch = {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } }
+        ]
+      };
+    }
+
+    // 3. Combine filters
+    if (boardMatch && searchMatch) {
+      filter.$and = [boardMatch, searchMatch];
+    } else if (boardMatch) {
+      Object.assign(filter, boardMatch);
+    } else if (searchMatch) {
+      Object.assign(filter, searchMatch);
+    }
 
     const [users, totalCount] = await Promise.all([
       User.find(filter)
@@ -45,7 +88,7 @@ export async function GET(request: Request) {
           // exclude any user whose role is SUPER_ADMIN
           match: { level: { $ne: "SUPER_ADMIN" } },
         })
-        .select("name email is_active role_id createdAt employee_id date_of_joining avatar")
+        .select("name email is_active role_id createdAt employee_id date_of_joining avatar user_type")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

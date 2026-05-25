@@ -7,7 +7,7 @@ import {
   LayoutGrid, List, Plus, Search, Loader2, Lock,
   CheckCircle2, Clock, CircleDashed, Eye, ChevronRight,
   Layers, FileText, X, Sparkles, Menu, ChevronDown,
-  UserPlus, Calendar, Flag, GitMerge, Trash2, Settings2, GripVertical, Circle, Pencil, Filter, User
+  UserPlus, Calendar, Flag, GitMerge, Trash2, Settings2, GripVertical, Circle, Pencil, Filter, User, Check
 } from "lucide-react";
 import TaskModal from "@/src/components/tasks/TaskModal";
 
@@ -31,9 +31,15 @@ function statusColor(color: string) {
 }
 
 // ─── Inline assignee picker ────────────────────────────────────────────────────
-function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; users: any[]; onChange: (ids: string[]) => void }) {
+function AssigneePicker({ assignees, onChange, boardId }: { assignees: any[]; onChange: (ids: string[]) => void; boardId?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const [fetchedUsers, setFetchedUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -41,13 +47,82 @@ function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; user
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  const fetchUsers = useCallback(async (pageNum: number, searchVal: string) => {
+    setLoading(true);
+    try {
+      let url = `/api/team?page=${pageNum}&limit=15`;
+      if (boardId) url += `&boardId=${boardId}`;
+      if (searchVal) url += `&search=${encodeURIComponent(searchVal)}`;
+      
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.success) {
+        if (pageNum === 1) {
+          setFetchedUsers(json.data);
+        } else {
+          setFetchedUsers(prev => {
+            const existingIds = new Set(prev.map(u => u._id));
+            const newUsers = json.data.filter((u: any) => !existingIds.has(u._id));
+            return [...prev, ...newUsers];
+          });
+        }
+        setTotalPages(json.pagination?.totalPages || 1);
+      }
+    } catch (err) {
+      console.error("Error fetching assignee users:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [boardId]);
+
+  // Reset/fetch when opening
+  useEffect(() => {
+    if (open) {
+      setPage(1);
+      setSearchQuery("");
+      fetchUsers(1, "");
+    }
+  }, [open, fetchUsers]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!open) return;
+    const delay = setTimeout(() => {
+      setPage(1);
+      fetchUsers(1, searchQuery);
+    }, 250);
+    return () => clearTimeout(delay);
+  }, [searchQuery, open, fetchUsers]);
+
   const toggle = (uid: string) => {
     const ids = assignees.map((a: any) => typeof a === "string" ? a : a._id);
     const updated = ids.includes(uid) ? ids.filter(id => id !== uid) : [...ids, uid];
     onChange(updated);
   };
 
+  const handleLoadMore = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (page < totalPages) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchUsers(nextPage, searchQuery);
+    }
+  };
+
   const assigneeIds = assignees.map((a: any) => typeof a === "string" ? a : a._id);
+
+  // Combine fetched list with already assigned users to prevent them from disappearing
+  const combinedUsers = [...fetchedUsers];
+  assignees.forEach((ass: any) => {
+    const id = typeof ass === "string" ? ass : ass?._id;
+    if (id && !combinedUsers.some(u => u._id === id)) {
+      if (typeof ass === "object") {
+        combinedUsers.push(ass);
+      } else {
+        combinedUsers.push({ _id: id, name: ass.name || "Assigned User", email: "", avatar: ass.avatar });
+      }
+    }
+  });
 
   return (
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
@@ -68,22 +143,52 @@ function AssigneePicker({ assignees, users, onChange }: { assignees: any[]; user
       <AnimatePresence>
         {open && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.12 }}
-            className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[160px] py-1 max-h-48 overflow-y-auto">
-            {users.length === 0 ? (
-              <div className="px-3 py-2 text-[10px] text-muted text-center italic">No users found</div>
-            ) : (
-              users.map(u => {
-                const checked = assigneeIds.includes(u._id) || assigneeIds.includes(u);
-                return (
-                  <button key={u._id} onClick={() => toggle(u._id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${checked ? "text-foreground" : "text-muted"}`}>
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan/40 to-violet/30 flex items-center justify-center text-[7px] font-bold text-white overflow-hidden shrink-0">
-                      {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : u.name?.[0]}
-                    </div>
-                    <span className="flex-1 truncate font-medium">{u.name}</span>
-                    {checked && <div className="w-1.5 h-1.5 rounded-full bg-cyan shrink-0" />}
-                  </button>
-                );
-              })
+            className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[170px] py-1 max-h-56 overflow-hidden flex flex-col">
+            
+            {/* Search Input */}
+            <div className="px-2 py-1.5 border-b border-muted/10">
+              <input
+                type="text"
+                placeholder="Search team..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-muted/5 border border-muted/15 rounded-lg px-2 py-1 text-[10px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40"
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
+
+            <div className="overflow-y-auto flex-1 max-h-40">
+              {loading && combinedUsers.length === 0 ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 size={12} className="animate-spin text-muted/50" />
+                </div>
+              ) : combinedUsers.length === 0 ? (
+                <div className="px-3 py-2 text-[10px] text-muted text-center italic">No users found</div>
+              ) : (
+                combinedUsers.map(u => {
+                  const checked = assigneeIds.includes(u._id);
+                  return (
+                    <button key={u._id} onClick={() => toggle(u._id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/5 transition-colors text-left ${checked ? "text-foreground" : "text-muted"}`}>
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan/40 to-violet/30 flex items-center justify-center text-[7px] font-bold text-white overflow-hidden shrink-0">
+                        {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : u.name?.[0]}
+                      </div>
+                      <span className="flex-1 truncate font-medium">{u.name}</span>
+                      {checked && <Check size={10} className="text-cyan shrink-0" />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {page < totalPages && (
+              <button
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="w-full py-1.5 text-[9px] text-cyan hover:bg-muted/5 font-semibold text-center border-t border-muted/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                {loading && <Loader2 size={8} className="animate-spin" />}
+                {loading ? "Loading..." : "Load More"}
+              </button>
             )}
           </motion.div>
         )}
@@ -310,7 +415,8 @@ function ApprovalScreen({ page, onApprove, onReject, apiPath }: { page: any; onA
 // ─── List Row (ClickUp-style) ─────────────────────────────────────────────────
 function ListRow({
   task, depth, activeStatuses, users, onOpen, onUpdate, allTasks, onExpand, expanded,
-  addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle, onDelete, currentUserId
+  addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle, onDelete, currentUserId,
+  boardId
 }: {
   task: any; depth: number; activeStatuses: any[]; users: any[];
   onOpen: (id: string) => void; onUpdate: (t: any) => void;
@@ -319,6 +425,7 @@ function ListRow({
   handleCreateTask: (e: React.FormEvent, statusOverride?: string, parentId?: string) => Promise<void>;
   isCreating: boolean; newTaskTitle: string; setNewTaskTitle: (v: string) => void;
   onDelete: (id: string) => void; currentUserId: string | null;
+  boardId?: string;
 }) {
   const subtaskCount = allTasks.filter(t => String(t.parent_task_id) === String(task._id)).length;
   const isExpanded = expanded.has(String(task._id));
@@ -389,7 +496,7 @@ function ListRow({
 
         {/* Assignees */}
         <div className="shrink-0 w-[72px] flex justify-center" onClick={e => e.stopPropagation()}>
-          <AssigneePicker assignees={task.assignee_ids || []} users={users} onChange={ids => patchTask({ assignee_ids: ids })} />
+          <AssigneePicker assignees={task.assignee_ids || []} onChange={ids => patchTask({ assignee_ids: ids })} boardId={boardId} />
         </div>
 
         {/* Due date */}
@@ -426,6 +533,7 @@ function ListRow({
               setNewTaskTitle={setNewTaskTitle}
               onDelete={onDelete}
               currentUserId={currentUserId}
+              boardId={boardId}
             />
           ))
         }
@@ -469,7 +577,8 @@ function GroupedListView({
   addingForStatus,
   setAddingForStatus,
   onDelete,
-  currentUserId
+  currentUserId,
+  boardId
 }: {
   tasks: any[];
   activeStatuses: any[];
@@ -490,6 +599,7 @@ function GroupedListView({
   setAddingForStatus: (status: string | null) => void;
   onDelete: (id: string) => void;
   currentUserId: string | null;
+  boardId?: string;
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -627,6 +737,7 @@ function GroupedListView({
                       setNewTaskTitle={setNewTaskTitle}
                       onDelete={onDelete}
                       currentUserId={currentUserId}
+                      boardId={boardId}
                     />
                   ))}
 
@@ -1331,6 +1442,7 @@ export default function TasksPage() {
                       setAddingForStatus={setAddingForStatus}
                       onDelete={handleDeleteTask}
                       currentUserId={currentUserId}
+                      boardId={selectedBoardId as string}
                     />
                   ) : (
                     // Kanban — drag-and-drop
@@ -1505,7 +1617,7 @@ export default function TasksPage() {
                   <div className="space-y-1.5">
                     <span className="text-[10px] uppercase font-bold text-muted/60 tracking-wider">Members ({newBoardMembers.length})</span>
                     <div className="flex items-center gap-2 flex-wrap h-10 px-3 bg-muted/5 border border-muted/15 rounded-xl">
-                      <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} users={users} onChange={setNewBoardMembers} />
+                      <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} onChange={setNewBoardMembers} />
                       <span className="text-[10px] text-muted line-clamp-1 flex-1">{newBoardMembers.length > 0 ? "Users selected" : "Click to select members"}</span>
                     </div>
                   </div>
@@ -1535,7 +1647,7 @@ export default function TasksPage() {
                 <div className="space-y-1.5">
                   <span className="text-[10px] uppercase font-bold text-muted/60 tracking-wider">Members ({newBoardMembers.length})</span>
                   <div className="flex items-center gap-2 flex-wrap min-h-[40px] px-3 border border-muted/15 rounded-xl bg-muted/5">
-                    <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} users={users} onChange={setNewBoardMembers} />
+                    <AssigneePicker assignees={newBoardMembers.map(id => users.find(u => u._id === id) || id)} onChange={setNewBoardMembers} />
                     <span className="text-[10px] text-muted ml-2">Add or remove users</span>
                   </div>
                 </div>
@@ -1818,6 +1930,7 @@ export default function TasksPage() {
         boardStatuses={boards.find(b => b._id === selectedBoardId)?.statuses || []}
         boardName={boards.find(b => b._id === selectedBoardId)?.name}
         pageName={selectedPage?.name}
+        boardId={selectedBoardId as string}
       />
     </div>
   );

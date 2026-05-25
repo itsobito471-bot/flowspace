@@ -194,21 +194,99 @@ function PriorityChip({ value, onChange }: { value: string; onChange: (v: string
 }
 
 // ─── Assignee Picker ──────────────────────────────────────────────────────────
-function AssigneePicker({ assignees, users, onChange }: {
-  assignees: any[]; users: any[]; onChange: (ids: string[]) => void;
+function AssigneePicker({ assignees, onChange, boardId }: {
+  assignees: any[]; onChange: (ids: string[]) => void; boardId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+
+  const [fetchedUsers, setFetchedUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  const fetchUsers = useCallback(async (pageNum: number, searchVal: string) => {
+    setLoading(true);
+    try {
+      let url = `/api/team?page=${pageNum}&limit=15`;
+      if (boardId) url += `&boardId=${boardId}`;
+      if (searchVal) url += `&search=${encodeURIComponent(searchVal)}`;
+
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.success) {
+        if (pageNum === 1) {
+          setFetchedUsers(json.data);
+        } else {
+          setFetchedUsers(prev => {
+            const existingIds = new Set(prev.map(u => u._id));
+            const newUsers = json.data.filter((u: any) => !existingIds.has(u._id));
+            return [...prev, ...newUsers];
+          });
+        }
+        setTotalPages(json.pagination?.totalPages || 1);
+      }
+    } catch (err) {
+      console.error("Error fetching assignee users in modal:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [boardId]);
+
+  // Reset/fetch when opening
+  useEffect(() => {
+    if (open) {
+      setPage(1);
+      setSearchQuery("");
+      fetchUsers(1, "");
+    }
+  }, [open, fetchUsers]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!open) return;
+    const delay = setTimeout(() => {
+      setPage(1);
+      fetchUsers(1, searchQuery);
+    }, 250);
+    return () => clearTimeout(delay);
+  }, [searchQuery, open, fetchUsers]);
+
   const toggle = (uid: string) => {
     const ids = assignees.map((a: any) => typeof a === "string" ? a : a._id);
     onChange(ids.includes(uid) ? ids.filter(id => id !== uid) : [...ids, uid]);
   };
+
+  const handleLoadMore = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (page < totalPages) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchUsers(nextPage, searchQuery);
+    }
+  };
+
   const assigneeIds = assignees.map((a: any) => typeof a === "string" ? a : a._id);
+
+  // Combine fetched list with already assigned users
+  const combinedUsers = [...fetchedUsers];
+  assignees.forEach((ass: any) => {
+    const id = typeof ass === "string" ? ass : ass?._id;
+    if (id && !combinedUsers.some(u => u._id === id)) {
+      if (typeof ass === "object") {
+        combinedUsers.push(ass);
+      } else {
+        combinedUsers.push({ _id: id, name: ass.name || "Assigned User", email: "", avatar: ass.avatar });
+      }
+    }
+  });
 
   return (
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
@@ -240,22 +318,54 @@ function AssigneePicker({ assignees, users, onChange }: {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 2, scale: 0.97 }}
             transition={{ duration: 0.1 }}
-            className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[170px] py-1 max-h-48 overflow-y-auto"
+            className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[170px] py-1 max-h-56 overflow-hidden flex flex-col"
           >
-            <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-muted/50">Assign to</div>
-            {users.map(u => {
-              const checked = assigneeIds.includes(u._id);
-              return (
-                <button key={u._id} onClick={() => toggle(u._id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-xs hover:bg-muted/5 transition-colors text-left ${checked ? "text-foreground" : "text-muted"}`}>
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet/40 to-cyan/30 flex shrink-0 items-center justify-center text-[7px] font-bold text-white overflow-hidden">
-                    {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : u.name?.[0]}
-                  </div>
-                  <span className="flex-1 truncate font-medium">{u.name}</span>
-                  {checked && <Check size={10} className="text-cyan shrink-0" />}
-                </button>
-              );
-            })}
+            {/* Search Input */}
+            <div className="px-2 py-1.5 border-b border-muted/10">
+              <input
+                type="text"
+                placeholder="Search team..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-muted/5 border border-muted/15 rounded-lg px-2 py-1 text-[10px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-cyan/40"
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
+
+            <div className="overflow-y-auto flex-1 max-h-40">
+              {loading && combinedUsers.length === 0 ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 size={12} className="animate-spin text-muted/50" />
+                </div>
+              ) : combinedUsers.length === 0 ? (
+                <div className="px-3 py-2 text-[10px] text-muted text-center italic">No users found</div>
+              ) : (
+                combinedUsers.map(u => {
+                  const checked = assigneeIds.includes(u._id);
+                  return (
+                    <button key={u._id} onClick={() => toggle(u._id)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-xs hover:bg-muted/5 transition-colors text-left ${checked ? "text-foreground" : "text-muted"}`}>
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet/40 to-cyan/30 flex shrink-0 items-center justify-center text-[7px] font-bold text-white overflow-hidden">
+                        {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt="" /> : u.name?.[0]}
+                      </div>
+                      <span className="flex-1 truncate font-medium">{u.name}</span>
+                      {checked && <Check size={10} className="text-cyan shrink-0" />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {page < totalPages && (
+              <button
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="w-full py-1.5 text-[9px] text-cyan hover:bg-muted/5 font-semibold text-center border-t border-muted/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                {loading && <Loader2 size={8} className="animate-spin" />}
+                {loading ? "Loading..." : "Load More"}
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -290,12 +400,13 @@ interface TaskModalProps {
   boardStatuses: any[];
   boardName?: string;
   pageName?: string;
+  boardId?: string;
 }
 
 const spring = { type: "spring", stiffness: 420, damping: 34 } as const;
 
 export default function TaskModal({
-  taskId, isOpen, onClose, onTaskUpdated, users, boardStatuses, boardName, pageName
+  taskId, isOpen, onClose, onTaskUpdated, users, boardStatuses, boardName, pageName, boardId
 }: TaskModalProps) {
   const { data: session } = useSession();
   const currentUserId = (session?.user as any)?.id || null;
@@ -624,8 +735,8 @@ export default function TaskModal({
                           <span className="text-[10px] text-muted/50 font-semibold uppercase tracking-wider w-16 shrink-0">Assignee</span>
                           <AssigneePicker
                             assignees={task.assignee_ids || []}
-                            users={users}
                             onChange={ids => handleUpdate({ assignee_ids: ids })}
+                            boardId={boardId}
                           />
                         </div>
 
@@ -783,7 +894,7 @@ export default function TaskModal({
 
                                       {/* Assignee */}
                                       <div className="shrink-0 w-[72px] flex justify-center" onClick={e => e.stopPropagation()}>
-                                        <AssigneePicker assignees={sub.assignee_ids || []} users={users} onChange={ids => patchSubtask(subId, { assignee_ids: ids })} />
+                                        <AssigneePicker assignees={sub.assignee_ids || []} onChange={ids => patchSubtask(subId, { assignee_ids: ids })} boardId={boardId} />
                                       </div>
 
                                       {/* Priority */}
