@@ -169,9 +169,11 @@ export default function PayrollSection({ userId, isAdmin }: PayrollSectionProps)
 
   const now = new Date();
   let currentBase = 0;
+  let currentOvertimeRate = 0;
   for (const s of salaryLogs) {
     if (new Date(s.effective_date) <= now) {
       currentBase = s.amount;
+      currentOvertimeRate = s.overtime_rate || 0;
       break;
     }
   }
@@ -204,13 +206,24 @@ export default function PayrollSection({ userId, isAdmin }: PayrollSectionProps)
           {activeTab === "SALARY" && isAdmin && (
             <div className="space-y-6">
               <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 p-6 rounded-2xl bg-background border border-muted/10">
-                <div>
-                  <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">Current Base Salary</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-foreground">
-                      ${currentBase.toLocaleString(undefined, { minimumFractionDigits: 0 })}
-                    </span>
-                    <span className="text-muted text-sm font-medium">/ year</span>
+                <div className="flex flex-col sm:flex-row gap-6 sm:gap-12">
+                  <div>
+                    <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">Current Base Salary</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-foreground">
+                        ${currentBase.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                      </span>
+                      <span className="text-muted text-sm font-medium">/ year</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">Overtime Hourly Rate</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-foreground">
+                        ${currentOvertimeRate.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                      </span>
+                      <span className="text-muted text-sm font-medium">/ hour</span>
+                    </div>
                   </div>
                 </div>
 
@@ -242,7 +255,10 @@ export default function PayrollSection({ userId, isAdmin }: PayrollSectionProps)
                         return (
                           <tr key={log._id} className="border-b border-muted/10 last:border-0 hover:bg-muted/5">
                             <td className="px-5 py-4">
-                              <p className="font-bold text-base mb-1">${log.amount.toLocaleString()}</p>
+                              <div className="flex items-baseline gap-2 mb-1">
+                                <span className="font-bold text-base">${log.amount.toLocaleString()}</span>
+                                <span className="text-xs text-muted">(${log.overtime_rate || 0}/hr OT)</span>
+                              </div>
                               {log.breakdown && log.breakdown.length > 0 && (
                                 <div className="space-y-1 mt-2">
                                   {log.breakdown.map((b: any, i: number) => (
@@ -418,6 +434,7 @@ function UpdateSalaryModal({ open, onClose, userId, editingLog, onSuccess, onErr
 
   const [effectiveDate, setEffectiveDate] = useState("");
   const [breakdown, setBreakdown] = useState<{ title: string, amount: number }[]>([{ title: "Basic", amount: 0 }]);
+  const [overtimeRate, setOvertimeRate] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
   // Pre-fill when editing
@@ -426,9 +443,11 @@ function UpdateSalaryModal({ open, onClose, userId, editingLog, onSuccess, onErr
       if (editingLog) {
         setEffectiveDate(format(new Date(editingLog.effective_date), "yyyy-MM-dd"));
         setBreakdown(editingLog.breakdown?.length > 0 ? editingLog.breakdown : [{ title: "Basic", amount: editingLog.amount }]);
+        setOvertimeRate(editingLog.overtime_rate !== undefined ? editingLog.overtime_rate : 0);
       } else {
         setEffectiveDate("");
         setBreakdown([{ title: "Basic", amount: 0 }]);
+        setOvertimeRate(0);
       }
     }
   }, [open, editingLog]);
@@ -449,7 +468,7 @@ function UpdateSalaryModal({ open, onClose, userId, editingLog, onSuccess, onErr
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalAmount, effective_date: effectiveDate, breakdown })
+        body: JSON.stringify({ amount: totalAmount, effective_date: effectiveDate, breakdown, overtime_rate: overtimeRate })
       });
       const json = await res.json();
       if (json.success) {
@@ -518,6 +537,12 @@ function UpdateSalaryModal({ open, onClose, userId, editingLog, onSuccess, onErr
             <label className="text-xs font-semibold text-muted block mb-1.5">Effective Date</label>
             <input type="date" required value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} className={inputCls} />
           </div>
+
+          <div>
+            <label className="text-xs font-semibold text-muted block mb-1.5">Overtime Hourly Rate ($ / hr)</label>
+            <input type="number" required min="0" value={overtimeRate || ''} onChange={e => setOvertimeRate(Number(e.target.value))} className={inputCls} placeholder="0" />
+          </div>
+
           <button type="submit" disabled={loading} className="w-full py-2.5 bg-cyan text-background font-bold text-sm rounded-xl hover:bg-cyan/90 transition-all flex justify-center mt-2">
             {loading ? <Loader2 className="animate-spin" size={18} /> : isEditing ? "Save Changes" : "Save Salary Configuration"}
           </button>

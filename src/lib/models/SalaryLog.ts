@@ -7,6 +7,7 @@ export interface ISalaryLog extends Document {
   effective_date: Date;
   changed_by: mongoose.Types.ObjectId | null;
   organization_id: mongoose.Types.ObjectId;
+  overtime_rate?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +24,7 @@ const SalaryLogSchema = new Schema<ISalaryLog>(
     ],
     effective_date: { type: Date, required: true },
     organization_id: { type: Schema.Types.ObjectId, ref: "Organization", required: true },
+    overtime_rate: { type: Number, default: 0 },
     /**
      * changed_by is nullable — null signals a system/initial entry made
      * during onboarding, not triggered by an admin action.

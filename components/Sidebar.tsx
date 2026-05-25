@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   Menu,
   X,
+  Coins,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
@@ -52,11 +53,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: "Calendar", href: "/calendar", icon: CalendarDays },
   { name: "Leave Requests", href: "/leave", icon: Calendar },
   { name: "Reports", href: "/reports", icon: BarChart2 },
-  /**
-   * The "Admin Panel" item is flagged adminOnly: true.
-   * It will only be rendered when userRole === "ADMIN".
-   */
-  // { name: "Admin Panel", href: "/admin", icon: ShieldAlert, adminOnly: true },
+  { name: "Overtime Approvals", href: "/overtime", icon: Coins },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -124,6 +121,9 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
         <nav className="mt-4 px-3 space-y-1">
           {visibleItems.map((item) => {
             const isActive = pathname?.startsWith(item.href);
+            const displayName = item.href === "/overtime"
+              ? (userRole === "ADMIN" ? "Overtime Approvals" : "My Overtime")
+              : item.name;
             return (
               <Link key={item.name} href={item.href}>
                 <motion.div
@@ -146,7 +146,7 @@ function DesktopSidebar({ userRole, userName, userDepartment }: SidebarProps) {
                       className={`text-sm font-semibold tracking-tight truncate ${isActive ? "text-cyan" : ""
                         }`}
                     >
-                      {item.name}
+                      {displayName}
                     </span>
                   )}
                 </motion.div>
@@ -248,6 +248,9 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-muted/10 px-2 py-2 flex items-center justify-around">
         {visibleItems.slice(0, 4).map((item) => {
           const isActive = pathname?.startsWith(item.href);
+          const displayName = item.href === "/overtime"
+            ? (userRole === "ADMIN" ? "Overtime Approvals" : "My Overtime")
+            : item.name;
           return (
             <Link key={item.name} href={item.href}>
               <div
@@ -255,7 +258,7 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
                   }`}
               >
                 <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
-                <span className="text-[9px] font-bold tracking-wide">{item.name}</span>
+                <span className="text-[9px] font-bold tracking-wide">{displayName}</span>
               </div>
             </Link>
           );
@@ -309,6 +312,9 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
               <nav className="space-y-2 flex-1">
                 {visibleItems.map((item) => {
                   const isActive = pathname?.startsWith(item.href);
+                  const displayName = item.href === "/overtime"
+                    ? (userRole === "ADMIN" ? "Overtime Approvals" : "My Overtime")
+                    : item.name;
                   return (
                     <Link key={item.name} href={item.href} onClick={() => setOpen(false)}>
                       <div
@@ -318,7 +324,7 @@ function MobileSidebar({ userRole, userName }: SidebarProps) {
                           }`}
                       >
                         <item.icon size={18} strokeWidth={isActive ? 2.5 : 1.8} />
-                        <span className="text-sm font-semibold">{item.name}</span>
+                        <span className="text-sm font-semibold">{displayName}</span>
                       </div>
                     </Link>
                   );

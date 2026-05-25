@@ -9,7 +9,9 @@ export type NotificationType =
   | "WFH_REJECTED"
   | "TASK_ASSIGNED"
   | "TASK_OVERDUE"
-  | "TASK_DELETED";
+  | "TASK_DELETED"
+  | "OVERTIME_STARTED"
+  | "OVERTIME_SUBMITTED";
 
 export interface INotification extends Document {
   recipient_id: mongoose.Types.ObjectId;
@@ -28,7 +30,19 @@ const NotificationSchema = new Schema<INotification>(
     recipient_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
-      enum: ["LEAVE_REQUEST", "LEAVE_APPROVED", "LEAVE_REJECTED", "WFH_REQUEST", "WFH_APPROVED", "WFH_REJECTED", "TASK_ASSIGNED", "TASK_OVERDUE", "TASK_DELETED"],
+      enum: [
+        "LEAVE_REQUEST",
+        "LEAVE_APPROVED",
+        "LEAVE_REJECTED",
+        "WFH_REQUEST",
+        "WFH_APPROVED",
+        "WFH_REJECTED",
+        "TASK_ASSIGNED",
+        "TASK_OVERDUE",
+        "TASK_DELETED",
+        "OVERTIME_STARTED",
+        "OVERTIME_SUBMITTED"
+      ],
       required: true,
     },
     title: { type: String, required: true },

@@ -5,6 +5,7 @@ import { Attendance } from "@/src/lib/models/Attendance";
 import { Leave } from "@/src/lib/models/Leave";
 import { CompanySettings } from "@/src/lib/models/Settings";
 import { BlackPoint } from "@/src/lib/models/BlackPoint";
+import { TaskTimeLog } from "@/src/lib/models/TaskTimeLog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
     // 3. Parallel fetch all required collections for the organization
-    const [users, orgSettings, attendances, leaves, blackPoints] = await Promise.all([
+    const [users, orgSettings, attendances, leaves, blackPoints, timeLogs] = await Promise.all([
       User.find({ organization_id: myOrgId }).populate("role_id").lean(),
       CompanySettings.findOne({ organization_id: myOrgId }).sort({ year: -1 }).lean(),
       Attendance.find({
@@ -59,6 +60,11 @@ export async function GET(request: Request) {
       BlackPoint.find({
         organization_id: myOrgId,
         date: { $gte: startDate, $lte: endDate }
+      }).lean(),
+      TaskTimeLog.find({
+        organization_id: myOrgId,
+        approval_status: "APPROVED",
+        start_time: { $gte: startDate, $lte: endDate }
       }).lean()
     ]);
 
@@ -111,21 +117,9 @@ export async function GET(request: Request) {
       const timesEarlyOut = userPoints.filter(b => b.type === "AUTO_EARLY_CHECKOUT").length;
       const manualDemerits = userPoints.filter(b => b.type === "MANUAL").reduce((acc, curr) => acc + curr.points, 0);
 
-      // Overtime Calculation
-      let totalOvertimeHours = 0;
-      if (orgSettings?.is_overtime_applicable) {
-        userAttendances.forEach(att => {
-          if (att.check_in && att.check_out) {
-            const inTime = new Date(att.check_in).getTime();
-            const outTime = new Date(att.check_out).getTime();
-            const hoursWorked = (outTime - inTime) / (1000 * 60 * 60);
-
-            if (hoursWorked > standardHours) {
-              totalOvertimeHours += (hoursWorked - standardHours);
-            }
-          }
-        });
-      }
+      // Overtime Calculation from approved TaskTimeLogs
+      const userTimeLogs = timeLogs.filter(log => log.user_id.toString() === uId);
+      const totalOvertimeHours = userTimeLogs.reduce((sum, log) => sum + (log.duration_seconds / 3600), 0);
 
       // Return unified row for Excel
       return {

@@ -77,6 +77,7 @@ export async function POST(request: Request, context: any) {
       effective_date: new Date(effective_date),
       changed_by: (session.user as any).id,
       organization_id: orgId,
+      overtime_rate: body.overtime_rate !== undefined ? Number(body.overtime_rate) : 0,
     });
 
     return NextResponse.json({ success: true, data: newSalaryLog });
@@ -120,6 +121,7 @@ export async function PATCH(request: Request, context: any) {
         breakdown,
         effective_date: new Date(effective_date),
         changed_by: (session.user as any).id,
+        overtime_rate: body.overtime_rate !== undefined ? Number(body.overtime_rate) : 0,
       },
       { new: true }
     );

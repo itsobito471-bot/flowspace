@@ -11,12 +11,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import dynamic from "next/dynamic";
-
-const RichTextEditor = dynamic(() => import("./RichTextEditor"), {
-  ssr: false,
-  loading: () => <div className="h-28 animate-pulse bg-muted/5 rounded-lg w-full" />,
-});
+import DynamicEditor from "@/src/components/editor/DynamicEditor";
 
 const STATUS_ICONS: Record<string, any> = {
   DONE: CheckCircle2, IN_PROGRESS: Clock, REVIEW: Eye, TODO: CircleDashed,
@@ -703,7 +698,9 @@ export default function TaskModal({
                         <AlignLeft size={12} className="text-muted/40" />
                         <span className="text-[11px] font-semibold text-muted/50 uppercase tracking-wider">Description</span>
                       </div>
-                      <RichTextEditor data={task.description} onChange={data => handleUpdate({ description: data })} />
+                      <div className="min-h-[200px] border border-muted/10 rounded-xl p-4 bg-transparent">
+                        <DynamicEditor initialData={task.description} onChange={data => handleUpdate({ description: data })} />
+                      </div>
                     </div>
 
                     {/* Divider */}

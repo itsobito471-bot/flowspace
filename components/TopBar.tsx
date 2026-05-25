@@ -4,8 +4,10 @@ import { Search, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import NotificationBell from "@/components/NotificationBell";
+import GlobalTimer from "@/components/GlobalTimer";
 
 interface TopBarProps {
   userName: string;
@@ -15,6 +17,7 @@ interface TopBarProps {
 
 export default function TopBar({ userName, userRole, userImage }: TopBarProps) {
   const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
   // Prevent hydration mismatch for theme toggle icon
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -50,6 +53,9 @@ export default function TopBar({ userName, userRole, userImage }: TopBarProps) {
       {/* ── Right side ── */}
       <div className="flex items-center gap-3 ml-3 sm:gap-4 sm:ml-6 shrink-0">
         
+        {/* Global Timer Widget - Rendered only on /tasks page */}
+        {pathname === "/tasks" && <GlobalTimer />}
+
         {/* Theme Toggle */}
         {mounted && (
           <button
