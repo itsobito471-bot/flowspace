@@ -45,6 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!existingTask) return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
 
     const oldAssignees = new Set((existingTask.assignee_ids || []).map((aid: any) => aid.toString()));
+    const statusChanged = body.status && body.status !== existingTask.status;
 
     const updatedTask = await Task.findOneAndUpdate(
       { _id: id, organization_id: orgId },
@@ -69,6 +70,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           related_id: updatedTask._id,
         }));
         await Notification.insertMany(notes);
+      }
+    }
+
+    if (statusChanged) {
+      const assigneesToNotify = (updatedTask.assignee_ids || []).filter(
+        (aid: any) => aid._id.toString() !== userId
+      );
+      if (assigneesToNotify.length > 0) {
+        const notes = assigneesToNotify.map((ass: any) => ({
+          recipient_id: ass._id,
+          type: "TASK_STATUS_CHANGED",
+          title: "Task Status Updated",
+          message: `Task "${updatedTask.title}" status was changed from ${existingTask.status} to ${updatedTask.status} by ${session.user.name ?? "someone"}.`,
+          link: `/tasks?id=${updatedTask._id}`,
+          is_read: false,
+          related_id: updatedTask._id,
+        }));
+        await Notification.insertMany(notes);
+
+        try {
+          const { pusherServer } = await import("@/src/lib/pusher");
+          await Promise.all(
+            assigneesToNotify.map((ass: any) =>
+              pusherServer.trigger(`user-${ass._id}`, "notification-ping", {})
+            )
+          );
+        } catch (err) {
+          console.error("Pusher trigger failed for status change:", err);
+        }
       }
     }
 

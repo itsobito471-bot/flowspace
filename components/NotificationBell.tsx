@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Bell, Check, CheckCheck, Calendar, X } from "lucide-react";
+import { Bell, Check, CheckCheck, Calendar, X, CheckSquare, Layers, Briefcase } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -9,7 +9,7 @@ import { pusherClient } from "@/src/lib/pusherClient";
 
 interface AppNotification {
   _id: string;
-  type: "LEAVE_REQUEST" | "LEAVE_APPROVED" | "LEAVE_REJECTED";
+  type: string;
   title: string;
   message: string;
   link: string;
@@ -28,10 +28,18 @@ function timeAgo(dateStr: string) {
   return `${d}d ago`;
 }
 
-const TYPE_COLORS = {
+const TYPE_COLORS: Record<string, string> = {
   LEAVE_REQUEST: "text-cyan bg-cyan/10 border-cyan/20",
   LEAVE_APPROVED: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   LEAVE_REJECTED: "text-red-400 bg-red-500/10 border-red-500/20",
+  WFH_REQUEST: "text-cyan bg-cyan/10 border-cyan/20",
+  WFH_APPROVED: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  WFH_REJECTED: "text-red-400 bg-red-500/10 border-red-500/20",
+  TASK_ASSIGNED: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+  TASK_STATUS_CHANGED: "text-cyan bg-cyan/10 border-cyan/20",
+  TASK_DELETED: "text-red-400 bg-red-500/10 border-red-500/20",
+  OVERTIME_STARTED: "text-cyan bg-cyan/10 border-cyan/20",
+  OVERTIME_SUBMITTED: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
 };
 
 export default function NotificationBell() {
@@ -204,8 +212,14 @@ export default function NotificationBell() {
                     }`}
                   >
                     {/* Icon */}
-                    <div className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 ${TYPE_COLORS[n.type]}`}>
-                      <Calendar size={12} />
+                    <div className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 ${TYPE_COLORS[n.type] || "text-muted bg-muted/10 border-muted/20"}`}>
+                      {n.type.startsWith("TASK_") ? (
+                        <CheckSquare size={12} />
+                      ) : n.type.startsWith("WFH_") ? (
+                        <Layers size={12} />
+                      ) : (
+                        <Calendar size={12} />
+                      )}
                     </div>
 
                     {/* Content */}

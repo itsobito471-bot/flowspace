@@ -10,6 +10,7 @@ import {
   UserPlus, Calendar, Flag, GitMerge, Trash2, Settings2, GripVertical, Circle, Pencil, Filter, User, Check
 } from "lucide-react";
 import TaskModal from "@/src/components/tasks/TaskModal";
+import { pusherClient } from "@/src/lib/pusherClient";
 
 const spring = { type: "spring", stiffness: 400, damping: 30 } as const;
 
@@ -416,7 +417,7 @@ function ApprovalScreen({ page, onApprove, onReject, apiPath }: { page: any; onA
 function ListRow({
   task, depth, activeStatuses, users, onOpen, onUpdate, allTasks, onExpand, expanded,
   addingSubtaskFor, setAddingSubtaskFor, handleCreateTask, isCreating, newTaskTitle, setNewTaskTitle, onDelete, currentUserId,
-  boardId
+  boardId, unreadNotifications
 }: {
   task: any; depth: number; activeStatuses: any[]; users: any[];
   onOpen: (id: string) => void; onUpdate: (t: any) => void;
@@ -426,6 +427,7 @@ function ListRow({
   isCreating: boolean; newTaskTitle: string; setNewTaskTitle: (v: string) => void;
   onDelete: (id: string) => void; currentUserId: string | null;
   boardId?: string;
+  unreadNotifications?: any[];
 }) {
   const subtaskCount = allTasks.filter(t => String(t.parent_task_id) === String(task._id)).length;
   const isExpanded = expanded.has(String(task._id));
@@ -468,6 +470,9 @@ function ListRow({
 
         {/* Title */}
         <span className="flex-1 text-[13px] font-medium text-foreground/80 group-hover:text-foreground transition-colors flex items-center gap-1.5 min-w-0 py-2.5 pr-1 truncate">
+          {unreadNotifications?.some(n => String(n.related_id) === String(task._id)) && (
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-pulse shrink-0" />
+          )}
           <span className="truncate">{task.title}</span>
           <span className="flex items-center opacity-0 group-hover:opacity-100 transition-all gap-0.5 shrink-0">
             <button
@@ -534,6 +539,7 @@ function ListRow({
               onDelete={onDelete}
               currentUserId={currentUserId}
               boardId={boardId}
+              unreadNotifications={unreadNotifications}
             />
           ))
         }
@@ -578,7 +584,8 @@ function GroupedListView({
   setAddingForStatus,
   onDelete,
   currentUserId,
-  boardId
+  boardId,
+  unreadNotifications
 }: {
   tasks: any[];
   activeStatuses: any[];
@@ -600,6 +607,7 @@ function GroupedListView({
   onDelete: (id: string) => void;
   currentUserId: string | null;
   boardId?: string;
+  unreadNotifications?: any[];
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -738,6 +746,7 @@ function GroupedListView({
                       onDelete={onDelete}
                       currentUserId={currentUserId}
                       boardId={boardId}
+                      unreadNotifications={unreadNotifications}
                     />
                   ))}
 
@@ -813,6 +822,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<any[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"KANBAN" | "LIST">("LIST");
   const [selectedAssignee, setSelectedAssignee] = useState<string>("");
@@ -907,6 +917,37 @@ export default function TasksPage() {
     if (json.success) setTasks(json.data);
     setLoading(false);
   }, []);
+
+  const fetchUnreadNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setUnreadNotifications(json.data.filter((n: any) => !n.is_read));
+      }
+    } catch (err) {
+      console.error("Error fetching notifications on tasks page:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadNotifications();
+  }, [fetchUnreadNotifications]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const channelName = `user-${currentUserId}`;
+    const channel = pusherClient.subscribe(channelName);
+    
+    channel.bind("notification-ping", () => {
+      fetchUnreadNotifications();
+    });
+
+    return () => {
+      channel.unbind("notification-ping");
+      pusherClient.unsubscribe(channelName);
+    };
+  }, [currentUserId, fetchUnreadNotifications]);
 
   useEffect(() => { fetchBoards(); fetchUsers(); }, [fetchBoards, fetchUsers]);
   useEffect(() => { if (selectedBoardId) fetchPages(selectedBoardId); }, [selectedBoardId, fetchPages]);
@@ -1051,6 +1092,16 @@ export default function TasksPage() {
     if (updatedTask.deleted) setTasks(prev => prev.filter(t => String(t._id) !== String(updatedTask._id)));
     else setTasks(prev => prev.map(t => String(t._id) === String(updatedTask._id) ? updatedTask : t));
   };
+
+  const handleOpenTask = useCallback((id: string) => {
+    setSelectedTaskId(id);
+    setUnreadNotifications(prev => prev.filter(n => String(n.related_id) !== String(id)));
+    fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ relatedId: id }),
+    }).catch(err => console.error("Error marking task notifications as read:", err));
+  }, []);
 
   const handleDeleteTask = (id: string) => {
     const task = tasks.find(t => String(t._id) === id);
@@ -1430,7 +1481,7 @@ export default function TasksPage() {
                       tasks={filteredTasks}
                       activeStatuses={visibleActiveStatuses}
                       users={users}
-                      onOpen={id => setSelectedTaskId(id)}
+                      onOpen={handleOpenTask}
                       onTaskUpdated={handleTaskUpdated}
                       addingSubtaskFor={addingSubtaskFor}
                       setAddingSubtaskFor={setAddingSubtaskFor}
@@ -1443,6 +1494,7 @@ export default function TasksPage() {
                       onDelete={handleDeleteTask}
                       currentUserId={currentUserId}
                       boardId={selectedBoardId as string}
+                      unreadNotifications={unreadNotifications}
                     />
                   ) : (
                     // Kanban — drag-and-drop
@@ -1514,7 +1566,7 @@ export default function TasksPage() {
                                         draggable
                                         onDragStart={(ev: React.DragEvent<HTMLDivElement>) => handleDragStart(ev, String(t._id))}
                                         onDragEnd={handleDragEnd}
-                                        onClick={() => !isDragging && setSelectedTaskId(String(t._id))}
+                                        onClick={() => !isDragging && handleOpenTask(String(t._id))}
                                         className={`rounded-xl cursor-grab active:cursor-grabbing transition-all group select-none overflow-hidden border ${isDragging ? "border-muted/5 opacity-50" : "border-muted/10 bg-surface hover:border-muted/20 hover:shadow-md"}`}
                                       >
                                         {/* Colored top accent bar */}
@@ -1523,7 +1575,12 @@ export default function TasksPage() {
                                         <div className="p-3">
                                           {/* Title row */}
                                           <div className="flex items-start justify-between gap-2 mb-3">
-                                            <h4 className="text-[13px] font-medium text-foreground/80 group-hover:text-foreground transition-colors leading-snug flex-1">{t.title}</h4>
+                                            <h4 className="text-[13px] font-medium text-foreground/80 group-hover:text-foreground transition-colors leading-snug flex-1 flex items-center gap-1.5 min-w-0">
+                                              {unreadNotifications?.some(n => String(n.related_id) === String(t._id)) && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-pulse shrink-0" />
+                                              )}
+                                              <span className="truncate">{t.title}</span>
+                                            </h4>
                                             <GripVertical size={11} className="text-muted/15 group-hover:text-muted/35 transition-colors shrink-0 mt-0.5" />
                                           </div>
 

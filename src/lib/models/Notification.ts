@@ -8,6 +8,7 @@ export type NotificationType =
   | "WFH_APPROVED"
   | "WFH_REJECTED"
   | "TASK_ASSIGNED"
+  | "TASK_STATUS_CHANGED"
   | "TASK_OVERDUE"
   | "TASK_DELETED"
   | "OVERTIME_STARTED"
@@ -38,6 +39,7 @@ const NotificationSchema = new Schema<INotification>(
         "WFH_APPROVED",
         "WFH_REJECTED",
         "TASK_ASSIGNED",
+        "TASK_STATUS_CHANGED",
         "TASK_OVERDUE",
         "TASK_DELETED",
         "OVERTIME_STARTED",
