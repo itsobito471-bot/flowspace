@@ -240,7 +240,7 @@ function AssigneePicker({ assignees, users, onChange }: {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 2, scale: 0.97 }}
             transition={{ duration: 0.1 }}
-            className="absolute top-full mt-1 right-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[170px] py-1 max-h-48 overflow-y-auto"
+            className="absolute top-full mt-1 left-0 z-[100] bg-surface border border-muted/15 rounded-xl shadow-2xl min-w-[170px] py-1 max-h-48 overflow-y-auto"
           >
             <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-muted/50">Assign to</div>
             {users.map(u => {
@@ -622,30 +622,11 @@ export default function TaskModal({
                         {/* Assignees */}
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-[10px] text-muted/50 font-semibold uppercase tracking-wider w-16 shrink-0">Assignee</span>
-                          <div className="flex items-center gap-1.5">
-                            {(task.assignee_ids || []).map((a: any, i: number) => (
-                              <div key={i} title={a.name}
-                                className="w-6 h-6 rounded-full border-2 border-background bg-gradient-to-br from-violet/40 to-cyan/40 flex items-center justify-center text-[8px] font-bold text-white overflow-hidden cursor-pointer hover:scale-110 transition-transform"
-                                onClick={() => handleToggleAssignee(typeof a === "string" ? a : a._id)}>
-                                {a.avatar ? <img src={a.avatar} alt="" className="w-full h-full object-cover" /> : a.name?.[0]}
-                              </div>
-                            ))}
-                            <select className="w-6 h-6 opacity-0 absolute cursor-pointer" onChange={e => handleToggleAssignee(e.target.value)} value="">
-                              <option value="" disabled>Toggle member</option>
-                              {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-                            </select>
-                            {!task.assignee_ids?.length && (
-                              <div className="relative">
-                                <div className="w-6 h-6 rounded-full border border-dashed border-muted/25 flex items-center justify-center hover:border-muted/50 transition-colors cursor-pointer">
-                                  <UserPlus size={10} className="text-muted/40" />
-                                </div>
-                                <select className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => handleToggleAssignee(e.target.value)} value="">
-                                  <option value="" disabled>Assign</option>
-                                  {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-                                </select>
-                              </div>
-                            )}
-                          </div>
+                          <AssigneePicker
+                            assignees={task.assignee_ids || []}
+                            users={users}
+                            onChange={ids => handleUpdate({ assignee_ids: ids })}
+                          />
                         </div>
 
                         {/* Due date */}
@@ -739,7 +720,7 @@ export default function TaskModal({
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.18 }}
-                            className="overflow-hidden"
+                            style={{ overflow: subtasksExpanded ? "visible" : "hidden" }}
                           >
                             {/* Column headers */}
                             {subtasks.length > 0 && (
